@@ -29,6 +29,13 @@ mysql_secure_installation   # set your MySQL root password
 1. Install Node.js (LTS) from https://nodejs.org
 2. Install MySQL with the MySQL Installer from https://dev.mysql.com/downloads/installer/ and set a root password during setup. MySQL then runs as a Windows service.
 
+**MySQL Workbench** (optional, for viewing the database):
+
+- macOS: `brew install --cask mysqlworkbench`, or download it from https://dev.mysql.com/downloads/workbench/
+- Windows: select MySQL Workbench in the MySQL Installer, or download it from https://dev.mysql.com/downloads/workbench/
+
+To connect, create a connection with host `localhost`, port `3306`, user `root` and your MySQL password, then open the `anna_flooring_db` schema.
+
 Check that both are installed:
 
 ```bash

@@ -4,6 +4,11 @@ CSC 6710 – Project 2, Group 6. A website for a flooring sales and installation
 
 Built with React (Vite, Tailwind) on the frontend and Node.js (Express) with MySQL on the backend.
 
+## Partners
+
+- Anten Manuuel
+- Akriti Mahto
+
 ## Requirements
 
 - Node.js 22.9 or newer

@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import apiRouter from './routes/api.js'
+import adminRouter from './routes/admin.js'
 import authRouter from './routes/auth.js'
 
 const app = express()
@@ -13,6 +14,7 @@ app.use(cookieParser())
 
 app.use('/api', apiRouter)
 app.use('/api/auth', authRouter)
+app.use('/api/admin', adminRouter)
 
 // Fallback 404 for unknown API routes
 app.use('/api', (req, res) => {

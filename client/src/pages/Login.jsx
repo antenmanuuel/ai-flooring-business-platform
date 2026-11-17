@@ -17,7 +17,8 @@ function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   // Arriving from registration pre-fills the email; arriving from a protected page returns there after login.
-  const redirectTo = location.state?.from || '/'
+  // Otherwise admins go to their dashboard and clients to the home page.
+  const redirectFor = (user) => location.state?.from || (user.role === 'admin' ? '/admin' : '/')
 
   const [form, setForm] = useState({ email: location.state?.email || '', password: '' })
   const [touched, setTouched] = useState({})
@@ -27,7 +28,7 @@ function Login() {
   const clientErrors = validate(form)
   const errorFor = (name) => (touched[name] ? clientErrors[name] : undefined)
 
-  if (!loading && client && !submitting) return <Navigate to={redirectTo} replace />
+  if (!loading && client && !submitting) return <Navigate to={redirectFor(client)} replace />
 
   function handleChange(event) {
     const { name, value } = event.target
@@ -48,8 +49,8 @@ function Login() {
 
     setSubmitting(true)
     try {
-      await login(form.email.trim(), form.password)
-      navigate(redirectTo, { replace: true })
+      const user = await login(form.email.trim(), form.password)
+      navigate(redirectFor(user), { replace: true })
     } catch (err) {
       setFormError(err.response?.data?.error || 'Something went wrong. Please try again.')
       setForm((prev) => ({ ...prev, password: '' }))

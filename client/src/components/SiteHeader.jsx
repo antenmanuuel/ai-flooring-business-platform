@@ -20,8 +20,12 @@ function SiteHeader() {
       <>
         <span className="hidden px-3 text-muted sm:inline">
           Hi, <span className="font-medium text-ink">{client.fullName.split(' ')[0]}</span>
-          {client.role === 'admin' && <span className="ml-1 text-copper">(admin)</span>}
         </span>
+        {client.role === 'admin' && (
+          <Link to="/admin" className={plainLink}>
+            Dashboard
+          </Link>
+        )}
         <button type="button" onClick={handleLogout} className={plainLink}>
           Log out
         </button>

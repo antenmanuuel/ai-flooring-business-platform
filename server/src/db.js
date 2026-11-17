@@ -2,7 +2,7 @@ import mysql from 'mysql2/promise'
 
 // Shared connection pool. Import this wherever you need to query the database:
 //   import pool from '../db.js'
-//   const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id])
+//   const [rows] = await pool.execute('SELECT * FROM Client WHERE client_id = ?', [id])
 // Always use ? placeholders for values to prevent SQL injection.
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',

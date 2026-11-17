@@ -8,16 +8,13 @@ function AuthProvider({ children }) {
   const [client, setClient] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // On page load, ask the server who is logged in (401 means nobody).
   useEffect(() => {
-    let cancelled = false
     api
       .get('/auth/me')
-      .then(({ data }) => !cancelled && setClient(data.client))
-      .catch(() => !cancelled && setClient(null))
-      .finally(() => !cancelled && setLoading(false))
-    return () => {
-      cancelled = true
-    }
+      .then(({ data }) => setClient(data.client))
+      .catch(() => setClient(null))
+      .finally(() => setLoading(false))
   }, [])
 
   const login = useCallback(async (email, password) => {

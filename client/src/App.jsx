@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router'
 import AdminLayout from './components/admin/AdminLayout'
+import ClientDetail from './pages/admin/ClientDetail'
 import Clients from './pages/admin/Clients'
 import ComingSoon from './pages/admin/ComingSoon'
 import Overview from './pages/admin/Overview'
@@ -19,6 +20,7 @@ function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Overview />} />
         <Route path="clients" element={<Clients />} />
+        <Route path="clients/:id" element={<ClientDetail />} />
         {adminSections.map((title) => (
           <Route key={title} path={title.toLowerCase()} element={<ComingSoon title={title} />} />
         ))}

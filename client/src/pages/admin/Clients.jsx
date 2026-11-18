@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import api from '../../api/client'
+import { darkButton, formatDate, plainButton, redButton, statusBadge } from './clientHelpers'
 
 const filters = [
   { value: 'all', label: 'All' },
@@ -7,19 +9,6 @@ const filters = [
   { value: 'active', label: 'Active' },
   { value: 'disabled', label: 'Disabled' },
 ]
-
-const statusBadge = {
-  pending: { label: 'Pending Approval', className: 'bg-copper/10 text-copper' },
-  active: { label: 'Active', className: 'bg-sand text-ink' },
-  disabled: { label: 'Disabled', className: 'bg-red-50 text-red-700' },
-}
-
-const plainButton = 'rounded-md border border-line bg-white px-4 py-2 hover:border-ink/30'
-const darkButton = 'rounded-md bg-espresso px-4 py-2 text-white hover:bg-espresso-dark'
-const redButton = 'rounded-md border border-red-300 bg-white px-4 py-2 text-red-700 hover:border-red-500'
-
-const formatDate = (value) =>
-  new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
 function Clients() {
   const [clients, setClients] = useState([])
@@ -87,42 +76,47 @@ function Clients() {
         <table className="w-full min-w-[56rem] text-left">
           <thead className="border-b border-line bg-sand/60 text-xs tracking-wide text-muted uppercase">
             <tr>
-              <th className="px-5 py-3 font-medium">Client</th>
-              <th className="px-5 py-3 font-medium">Contact</th>
-              <th className="px-5 py-3 font-medium">Registered</th>
+              <th className="px-4 py-3 font-medium">Client</th>
+              <th className="px-4 py-3 font-medium">Contact</th>
+              <th className="px-4 py-3 font-medium">Registered</th>
               {/* Requests, orders and bills are 0 until those tables exist. */}
-              <th className="px-5 py-3 font-medium">Requests</th>
-              <th className="px-5 py-3 font-medium">Orders</th>
-              <th className="px-5 py-3 font-medium">Bills</th>
-              <th className="px-5 py-3 font-medium">Status</th>
-              <th className="px-5 py-3" />
+              <th className="px-4 py-3 font-medium">Requests</th>
+              <th className="px-4 py-3 font-medium">Orders</th>
+              <th className="px-4 py-3 font-medium">Bills</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
             {shown.map((client) => (
               <tr key={client.id} className="border-b border-line align-top last:border-b-0">
-                <td className="px-5 py-4">
-                  <p className="whitespace-nowrap">{client.fullName}</p>
+                <td className="px-4 py-4">
+                  <Link
+                    to={`/admin/clients/${client.id}`}
+                    className="whitespace-nowrap underline-offset-4 hover:text-copper hover:underline"
+                  >
+                    {client.fullName}
+                  </Link>
                   <p className="text-sm text-muted">C{client.id}</p>
                 </td>
-                <td className="px-5 py-4">
+                <td className="px-4 py-4">
                   <p>{client.email}</p>
                   <p className="text-sm text-muted">
                     {client.phone} · {client.address}, {client.city}, {client.state}
                   </p>
                 </td>
-                <td className="px-5 py-4 whitespace-nowrap">{formatDate(client.createdAt)}</td>
-                <td className="px-5 py-4">0</td>
-                <td className="px-5 py-4">0</td>
-                <td className="px-5 py-4">0</td>
-                <td className="px-5 py-4">
+                <td className="px-4 py-4 whitespace-nowrap">{formatDate(client.createdAt)}</td>
+                <td className="px-4 py-4">0</td>
+                <td className="px-4 py-4">0</td>
+                <td className="px-4 py-4">0</td>
+                <td className="px-4 py-4">
                   <span
                     className={`rounded-full px-3 py-1 text-sm whitespace-nowrap ${statusBadge[client.status].className}`}
                   >
                     {statusBadge[client.status].label}
                   </span>
                 </td>
-                <td className="px-5 py-3">
+                <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
                     {client.status === 'pending' && (
                       <>
@@ -155,7 +149,7 @@ function Clients() {
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-5 py-10 text-center text-muted">
+                <td colSpan={8} className="px-4 py-10 text-center text-muted">
                   No clients here yet.
                 </td>
               </tr>

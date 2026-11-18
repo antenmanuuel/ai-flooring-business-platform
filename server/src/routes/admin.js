@@ -61,6 +61,35 @@ router.get('/clients', async (req, res) => {
   })
 })
 
+// GET /api/admin/clients/:id — one client's full details.
+router.get('/clients/:id', async (req, res) => {
+  const [rows] = await pool.execute(
+    `SELECT client_id, CONCAT(first_name, ' ', last_name) AS full_name,
+            email, phone, address, city, state, zip_code, country, status, created_at
+     FROM Client
+     WHERE client_id = ? AND role = 'client'`,
+    [req.params.id],
+  )
+  const row = rows[0]
+  if (!row) return res.status(404).json({ error: 'Client not found.' })
+
+  res.json({
+    client: {
+      id: row.client_id,
+      fullName: row.full_name,
+      email: row.email,
+      phone: row.phone,
+      address: row.address,
+      city: row.city,
+      state: row.state,
+      zipCode: row.zip_code,
+      country: row.country,
+      status: row.status,
+      createdAt: row.created_at,
+    },
+  })
+})
+
 // PATCH /api/admin/clients/:id/status
 // Body: { status: 'active' | 'disabled' }. Used for Approve, Disable and Re-enable.
 router.patch('/clients/:id/status', async (req, res) => {

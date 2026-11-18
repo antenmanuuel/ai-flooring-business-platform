@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import api from '../../api/client'
 
 // Placeholder numbers until the requests, quotes, orders and bills tables exist.
@@ -9,8 +10,8 @@ const stats = [
   { label: 'Unpaid bills', value: '$8,141.92' },
 ]
 
-const attention = [
-  { kind: 'Sign-up', text: 'Sofia Rossi signed up and is waiting for approval' },
+// Sample items until those tables exist. Sign-ups are real and come from the database.
+const sampleAttention = [
   { kind: 'Request', text: 'Emma Walsh requested a quote (2 rooms)' },
   { kind: 'Dispute', text: 'David Kim disputed bill B-1010' },
   { kind: 'Overdue', text: 'Laura Chen’s bill B-1009 is 20 days old ($1,771.92)' },
@@ -18,12 +19,19 @@ const attention = [
 ]
 
 function Overview() {
-  // Greeting and name come from the database (GET /api/admin/overview).
+  // Greeting, name and pending sign-ups come from the database (GET /api/admin/overview).
   const [overview, setOverview] = useState(null)
 
   useEffect(() => {
     api.get('/admin/overview').then(({ data }) => setOverview(data))
   }, [])
+
+  const signups = (overview?.pendingSignups ?? []).map((client) => ({
+    kind: 'Sign-up',
+    text: `${client.fullName} signed up and is waiting for approval`,
+    to: '/admin/clients',
+  }))
+  const attention = [...signups, ...sampleAttention]
 
   return (
     <>
@@ -51,7 +59,13 @@ function Overview() {
             <span className="text-xs font-semibold tracking-wide text-copper uppercase sm:w-40 sm:shrink-0 sm:pl-2 sm:text-sm">
               {item.kind}
             </span>
-            <span>{item.text}</span>
+            {item.to ? (
+              <Link to={item.to} className="hover:text-copper hover:underline">
+                {item.text}
+              </Link>
+            ) : (
+              <span>{item.text}</span>
+            )}
           </li>
         ))}
       </ul>

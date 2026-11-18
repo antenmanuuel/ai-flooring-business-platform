@@ -7,12 +7,29 @@ import SiteHeader from '../components/SiteHeader'
 
 const MIN_PASSWORD_LENGTH = 8
 
-const emptyForm = { fullName: '', email: '', password: '', confirmPassword: '' }
+const emptyForm = {
+  fullName: '',
+  email: '',
+  address: '',
+  city: '',
+  state: '',
+  zipCode: '',
+  country: 'United States',
+  phone: '',
+  password: '',
+  confirmPassword: '',
+}
 
 function validate(form) {
   const errors = {}
   if (!form.fullName.trim()) errors.fullName = 'Full name is required.'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = 'Enter a valid email address.'
+  if (!form.address.trim()) errors.address = 'Street address is required.'
+  if (!form.city.trim()) errors.city = 'City is required.'
+  if (!form.state.trim()) errors.state = 'State is required.'
+  if (!/^[A-Za-z0-9\- ]{3,10}$/.test(form.zipCode.trim())) errors.zipCode = 'Enter a valid ZIP code.'
+  if (!form.country.trim()) errors.country = 'Country is required.'
+  if (!/^[0-9+()\-. ]{7,20}$/.test(form.phone.trim())) errors.phone = 'Enter a valid phone number.'
   if (form.password.length < MIN_PASSWORD_LENGTH) {
     errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`
   }
@@ -20,7 +37,8 @@ function validate(form) {
   return errors
 }
 
-const allTouched = { fullName: true, email: true, password: true, confirmPassword: true }
+// Every field marked as touched, used on submit so all errors show at once.
+const allTouched = Object.fromEntries(Object.keys(emptyForm).map((name) => [name, true]))
 
 function Register() {
   const { client, loading } = useAuth()
@@ -65,6 +83,12 @@ function Register() {
       const { data } = await api.post('/auth/register', {
         fullName: form.fullName.trim(),
         email: form.email.trim(),
+        address: form.address.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+        zipCode: form.zipCode.trim(),
+        country: form.country.trim(),
+        phone: form.phone.trim(),
         password: form.password,
       })
       setCreatedEmail(data.client.email)
@@ -130,6 +154,68 @@ function Register() {
                   placeholder="jane@example.com"
                   value={form.email}
                   error={errorFor('email')}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                <FormField
+                  label="Street address"
+                  name="address"
+                  autoComplete="street-address"
+                  placeholder="123 Main St"
+                  value={form.address}
+                  error={errorFor('address')}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    label="City"
+                    name="city"
+                    autoComplete="address-level2"
+                    placeholder="Detroit"
+                    value={form.city}
+                    error={errorFor('city')}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  <FormField
+                    label="State"
+                    name="state"
+                    autoComplete="address-level1"
+                    placeholder="MI"
+                    value={form.state}
+                    error={errorFor('state')}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  <FormField
+                    label="ZIP code"
+                    name="zipCode"
+                    autoComplete="postal-code"
+                    placeholder="48201"
+                    value={form.zipCode}
+                    error={errorFor('zipCode')}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  <FormField
+                    label="Country"
+                    name="country"
+                    autoComplete="country-name"
+                    value={form.country}
+                    error={errorFor('country')}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                </div>
+                <FormField
+                  label="Phone number"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="(555) 123-4567"
+                  value={form.phone}
+                  error={errorFor('phone')}
                   onChange={handleChange}
                   onBlur={handleBlur}
                 />

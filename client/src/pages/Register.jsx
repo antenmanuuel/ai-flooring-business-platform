@@ -111,17 +111,16 @@ function Register() {
         <div className="w-full max-w-md rounded-lg border border-line bg-[#fffcf7] p-6 shadow-sm sm:p-10">
           {createdEmail ? (
             <div role="status">
-              <h1 className="font-serif text-3xl font-medium tracking-tight">You&apos;re all set</h1>
+              <h1 className="font-serif text-3xl font-medium tracking-tight">You have registered</h1>
               <p className="mt-3 text-sm leading-relaxed text-muted">
-                Your account for <span className="font-medium text-ink">{createdEmail}</span> has been created. Log in
-                to request your first quote.
+                Your account for <span className="font-medium text-ink">{createdEmail}</span> is waiting to be
+                approved. You can log in once Anna approves it.
               </p>
               <Link
-                to="/login"
-                state={{ email: createdEmail }}
+                to="/"
                 className="mt-8 block w-full rounded-md bg-espresso px-4 py-3 text-center text-sm font-medium text-white hover:bg-espresso-dark"
               >
-                Log in
+                Back to home
               </Link>
             </div>
           ) : (

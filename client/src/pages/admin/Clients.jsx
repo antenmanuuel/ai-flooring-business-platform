@@ -13,6 +13,7 @@ const filters = [
 function Clients() {
   const [clients, setClients] = useState([])
   const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -43,14 +44,27 @@ function Clients() {
   }
 
   const countFor = (status) => clients.filter((c) => c.status === status).length
-  const shown = filter === 'all' ? clients : clients.filter((c) => c.status === filter)
+  // Search matches the client number (e.g. C12), name, email, phone or address.
+  const query = search.trim().toLowerCase()
+  const matchesSearch = (c) =>
+    `c${c.id} ${c.fullName} ${c.email} ${c.phone} ${c.address} ${c.city} ${c.state}`.toLowerCase().includes(query)
+
+  const shown = clients.filter((c) => (filter === 'all' || c.status === filter) && matchesSearch(c))
 
   return (
     <>
       <h1 className="font-serif text-4xl font-medium">Clients</h1>
       <p className="mt-1 text-muted">Approve new sign-ups, disable or remove accounts.</p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search name, email, phone, address or C12"
+          aria-label="Search clients"
+          className="mb-2 w-full rounded-md border border-line bg-cream px-3.5 py-2 text-sm placeholder:text-muted/80 focus:border-copper focus:ring-2 focus:ring-copper/25 focus:outline-none sm:mr-2 sm:mb-0 sm:w-80"
+        />
         {filters.map((f) => (
           <button
             key={f.value}
@@ -150,7 +164,7 @@ function Clients() {
             {shown.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-muted">
-                  No clients here yet.
+                  {query ? 'No clients match your search.' : 'No clients here yet.'}
                 </td>
               </tr>
             )}

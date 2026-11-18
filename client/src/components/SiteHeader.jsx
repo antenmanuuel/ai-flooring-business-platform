@@ -19,7 +19,7 @@ function SiteHeader() {
     nav = (
       <>
         <span className="hidden px-3 text-muted sm:inline">
-          Hi, <span className="font-medium text-ink">{client.fullName.split(' ')[0]}</span>
+          Hi, <span className="font-medium text-ink">{client.firstName}</span>
         </span>
         {client.role === 'admin' && (
           <Link to="/admin" className={plainLink}>

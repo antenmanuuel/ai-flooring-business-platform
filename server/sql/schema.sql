@@ -6,7 +6,8 @@
 -- the admin is created by scripts/setup-db.js.
 CREATE TABLE IF NOT EXISTS Client (
   client_id     INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  full_name     VARCHAR(100) NOT NULL,
+  first_name    VARCHAR(50)  NOT NULL,
+  last_name     VARCHAR(50)  NOT NULL,
   email         VARCHAR(255) NOT NULL,
   -- Address and phone are required on the registration form; the admin row leaves them empty.
   address       VARCHAR(255) NULL,  -- street address

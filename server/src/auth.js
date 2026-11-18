@@ -30,7 +30,13 @@ export function clearAuthCookie(res) {
 
 // Shape sent to the browser. Never include password_hash.
 export function toPublicClient(row) {
-  return { id: row.client_id, fullName: row.full_name, email: row.email, role: row.role }
+  return {
+    id: row.client_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    role: row.role,
+  }
 }
 
 // Middleware: rejects the request with 401 unless it carries a valid login cookie.
@@ -48,7 +54,7 @@ export async function requireAuth(req, res, next) {
   }
 
   const [rows] = await pool.execute(
-    'SELECT client_id, full_name, email, role, status FROM Client WHERE client_id = ?',
+    'SELECT client_id, first_name, last_name, email, role, status FROM Client WHERE client_id = ?',
     [payload.sub],
   )
   // Deleted or disabled accounts are logged out straight away.

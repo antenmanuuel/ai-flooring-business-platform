@@ -18,15 +18,14 @@ router.get('/overview', async (req, res) => {
          WHEN HOUR(NOW()) < 18 THEN 'Good afternoon'
          ELSE 'Good evening'
        END AS greeting,
-       -- first name = everything before the first space in full_name
-       SUBSTRING_INDEX(full_name, ' ', 1) AS first_name
+       first_name
      FROM Client
      WHERE client_id = ?`,
     [req.client.client_id],
   )
 
   const [pending] = await pool.execute(
-    `SELECT client_id, full_name FROM Client
+    `SELECT client_id, CONCAT(first_name, ' ', last_name) AS full_name FROM Client
      WHERE role = 'client' AND status = 'pending'
      ORDER BY created_at`,
   )
@@ -41,7 +40,8 @@ router.get('/overview', async (req, res) => {
 // GET /api/admin/clients — every client account (admins are left out).
 router.get('/clients', async (req, res) => {
   const [rows] = await pool.execute(
-    `SELECT client_id, full_name, email, phone, address, city, state, status, created_at
+    `SELECT client_id, CONCAT(first_name, ' ', last_name) AS full_name,
+            email, phone, address, city, state, status, created_at
      FROM Client
      WHERE role = 'client'
      ORDER BY client_id`,

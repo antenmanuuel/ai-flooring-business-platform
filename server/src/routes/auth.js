@@ -19,10 +19,11 @@ const DUMMY_HASH = await bcrypt.hash('not-a-real-password', 10)
 const readString = (value) => (typeof value === 'string' ? value : '')
 
 // POST /api/auth/register
-// Body: { fullName, email, address, city, state, zipCode, country, phone, password }
+// Body: { firstName, lastName, email, address, city, state, zipCode, country, phone, password }
 // New accounts always get the default 'client' role; admins are created only by `npm run db:setup`.
 router.post('/register', async (req, res) => {
-  const fullName = readString(req.body?.fullName).trim()
+  const firstName = readString(req.body?.firstName).trim()
+  const lastName = readString(req.body?.lastName).trim()
   const email = readString(req.body?.email).trim().toLowerCase()
   const address = readString(req.body?.address).trim()
   const city = readString(req.body?.city).trim()
@@ -33,8 +34,10 @@ router.post('/register', async (req, res) => {
   const password = readString(req.body?.password)
 
   const errors = {}
-  if (!fullName) errors.fullName = 'Full name is required.'
-  else if (fullName.length > 100) errors.fullName = 'Full name must be 100 characters or fewer.'
+  if (!firstName) errors.firstName = 'First name is required.'
+  else if (firstName.length > 50) errors.firstName = 'First name must be 50 characters or fewer.'
+  if (!lastName) errors.lastName = 'Last name is required.'
+  else if (lastName.length > 50) errors.lastName = 'Last name must be 50 characters or fewer.'
   if (!EMAIL_PATTERN.test(email)) errors.email = 'Enter a valid email address.'
   else if (email.length > 255) errors.email = 'Email must be 255 characters or fewer.'
   if (!address) errors.address = 'Street address is required.'
@@ -62,12 +65,12 @@ router.post('/register', async (req, res) => {
 
   try {
     const [result] = await pool.execute(
-      `INSERT INTO Client (full_name, email, address, city, state, zip_code, country, phone, password_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [fullName, email, address, city, state, zipCode, country, phone, passwordHash],
+      `INSERT INTO Client (first_name, last_name, email, address, city, state, zip_code, country, phone, password_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [firstName, lastName, email, address, city, state, zipCode, country, phone, passwordHash],
     )
     return res.status(201).json({
-      client: { id: result.insertId, fullName, email, role: 'client' },
+      client: { id: result.insertId, firstName, lastName, email, role: 'client' },
     })
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -94,7 +97,7 @@ router.post('/login', async (req, res) => {
   }
 
   const [rows] = await pool.execute(
-    'SELECT client_id, full_name, email, password_hash, role, status FROM Client WHERE email = ?',
+    'SELECT client_id, first_name, last_name, email, password_hash, role, status FROM Client WHERE email = ?',
     [email],
   )
   const client = rows[0]

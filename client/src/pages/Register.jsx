@@ -8,7 +8,8 @@ import SiteHeader from '../components/SiteHeader'
 const MIN_PASSWORD_LENGTH = 8
 
 const emptyForm = {
-  fullName: '',
+  firstName: '',
+  lastName: '',
   email: '',
   address: '',
   city: '',
@@ -22,7 +23,8 @@ const emptyForm = {
 
 function validate(form) {
   const errors = {}
-  if (!form.fullName.trim()) errors.fullName = 'Full name is required.'
+  if (!form.firstName.trim()) errors.firstName = 'First name is required.'
+  if (!form.lastName.trim()) errors.lastName = 'Last name is required.'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = 'Enter a valid email address.'
   if (!form.address.trim()) errors.address = 'Street address is required.'
   if (!form.city.trim()) errors.city = 'City is required.'
@@ -81,7 +83,8 @@ function Register() {
     setSubmitting(true)
     try {
       const { data } = await api.post('/auth/register', {
-        fullName: form.fullName.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
         email: form.email.trim(),
         address: form.address.trim(),
         city: form.city.trim(),
@@ -135,16 +138,28 @@ function Register() {
               )}
 
               <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-5">
-                <FormField
-                  label="Full name"
-                  name="fullName"
-                  autoComplete="name"
-                  placeholder="Jane Smith"
-                  value={form.fullName}
-                  error={errorFor('fullName')}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    label="First name"
+                    name="firstName"
+                    autoComplete="given-name"
+                    placeholder="Jane"
+                    value={form.firstName}
+                    error={errorFor('firstName')}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  <FormField
+                    label="Last name"
+                    name="lastName"
+                    autoComplete="family-name"
+                    placeholder="Smith"
+                    value={form.lastName}
+                    error={errorFor('lastName')}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                </div>
                 <FormField
                   label="Email"
                   name="email"

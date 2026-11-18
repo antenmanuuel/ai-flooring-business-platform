@@ -14,7 +14,8 @@ import bcrypt from 'bcryptjs'
 import mysql from 'mysql2/promise'
 
 const ADMIN = {
-  fullName: 'Anna Johnson',
+  firstName: 'Anna',
+  lastName: 'Johnson',
   email: process.env.ADMIN_EMAIL || 'annajohnson@flooring.com',
   password: process.env.ADMIN_PASSWORD || 'Anna@12345',
 }
@@ -78,14 +79,15 @@ async function main() {
 
     const passwordHash = await bcrypt.hash(ADMIN.password, 10)
     const [result] = await connection.execute(
-      `INSERT INTO Client (full_name, email, password_hash, role, status)
-       VALUES (?, ?, ?, 'admin', 'active') AS new_admin
+      `INSERT INTO Client (first_name, last_name, email, password_hash, role, status)
+       VALUES (?, ?, ?, ?, 'admin', 'active') AS new_admin
        ON DUPLICATE KEY UPDATE
-         full_name = new_admin.full_name,
+         first_name = new_admin.first_name,
+         last_name = new_admin.last_name,
          password_hash = new_admin.password_hash,
          role = 'admin',
          status = 'active'`,
-      [ADMIN.fullName, ADMIN.email.toLowerCase(), passwordHash],
+      [ADMIN.firstName, ADMIN.lastName, ADMIN.email.toLowerCase(), passwordHash],
     )
     // affectedRows is 1 for a new row and 2 for an updated one.
     step(result.affectedRows === 1 ? 'Admin account created' : 'Admin account already existed; password reset')

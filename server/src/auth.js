@@ -48,10 +48,11 @@ export async function requireAuth(req, res, next) {
   }
 
   const [rows] = await pool.execute(
-    'SELECT client_id, full_name, email, role FROM Client WHERE client_id = ?',
+    'SELECT client_id, full_name, email, role, status FROM Client WHERE client_id = ?',
     [payload.sub],
   )
-  if (rows.length === 0) {
+  // Deleted or disabled accounts are logged out straight away.
+  if (rows.length === 0 || rows[0].status !== 'active') {
     clearAuthCookie(res)
     return res.status(401).json({ error: 'Not logged in.' })
   }

@@ -78,12 +78,13 @@ async function main() {
 
     const passwordHash = await bcrypt.hash(ADMIN.password, 10)
     const [result] = await connection.execute(
-      `INSERT INTO Client (full_name, email, password_hash, role)
-       VALUES (?, ?, ?, 'admin') AS new_admin
+      `INSERT INTO Client (full_name, email, password_hash, role, status)
+       VALUES (?, ?, ?, 'admin', 'active') AS new_admin
        ON DUPLICATE KEY UPDATE
          full_name = new_admin.full_name,
          password_hash = new_admin.password_hash,
-         role = 'admin'`,
+         role = 'admin',
+         status = 'active'`,
       [ADMIN.fullName, ADMIN.email.toLowerCase(), passwordHash],
     )
     // affectedRows is 1 for a new row and 2 for an updated one.

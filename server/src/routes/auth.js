@@ -94,7 +94,7 @@ router.post('/login', async (req, res) => {
   }
 
   const [rows] = await pool.execute(
-    'SELECT client_id, full_name, email, password_hash, role FROM Client WHERE email = ?',
+    'SELECT client_id, full_name, email, password_hash, role, status FROM Client WHERE email = ?',
     [email],
   )
   const client = rows[0]
@@ -103,6 +103,14 @@ router.post('/login', async (req, res) => {
   if (!client || !passwordOk) {
     // Same message either way so the form doesn't reveal which emails have accounts.
     return res.status(401).json({ error: 'Incorrect email or password.' })
+  }
+
+  // Only checked after the password is right, so this doesn't reveal anything to strangers.
+  if (client.status === 'pending') {
+    return res.status(403).json({ error: 'Your account is waiting for approval. Please try again later.' })
+  }
+  if (client.status === 'disabled') {
+    return res.status(403).json({ error: 'Your account has been disabled. Please contact us.' })
   }
 
   setAuthCookie(res, client)

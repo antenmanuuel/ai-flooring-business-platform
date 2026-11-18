@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS Client (
   phone         VARCHAR(20)  NULL,
   password_hash VARCHAR(255) NOT NULL,
   role          ENUM('client', 'admin') NOT NULL DEFAULT 'client',
+  -- New sign-ups start as 'pending' and can't log in until Anna approves them.
+  status        ENUM('pending', 'active', 'disabled') NOT NULL DEFAULT 'pending',
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT uq_client_email UNIQUE (email)

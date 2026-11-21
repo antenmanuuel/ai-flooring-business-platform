@@ -8,7 +8,7 @@ Anna Flooring — a website for a flooring sales/installation business: public p
 
 ## Commands
 
-There is no root package.json; the server and client are run separately (two terminals). Node is used only by `client/`.
+The root `package.json` has shortcut scripts only (no dependencies): `npm run dev` runs `scripts/dev.mjs`, which starts `server/` and `client/` together with `[server]`/`[client]` prefixes and stops both on Ctrl+C or when either exits; also `dev:server`, `dev:client`, `db:setup`, `build`, `lint`. They can still be run separately from each folder.
 
 Server, from `server/`:
 - `npm run dev` (or `npm start`) — API on port 5050. Java changes are not hot-reloaded from the terminal; restart, or rebuild from an IDE so DevTools restarts it.

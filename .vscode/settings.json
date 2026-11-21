@@ -1,0 +1,27 @@
+{
+    // VS Code is for the website (client/) only. The Spring Boot server is opened in IntelliJ IDEA,
+    // so hide server/ here and stop the Java extensions from importing it.
+    "files.exclude": {
+        "server": true
+    },
+    "search.exclude": {
+        "server": true
+    },
+    "files.watcherExclude": {
+        "**/server/**": true
+    },
+    "java.import.maven.enabled": false,
+    "java.import.gradle.enabled": false,
+    "java.import.exclusions": [
+        "**/server/**",
+        "**/node_modules/**",
+        "**/.metadata/**",
+        "**/archetype-resources/**",
+        "**/META-INF/maven/**"
+    ],
+    "maven.excludedFolders": [
+        "**/server/**",
+        "**/node_modules",
+        "**/target"
+    ]
+}

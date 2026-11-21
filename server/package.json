@@ -1,20 +1,12 @@
 {
   "name": "server",
-  "version": "1.0.0",
   "private": true,
-  "type": "module",
-  "main": "src/index.js",
+  "description": "npm shortcuts for the Spring Boot server. They run the Maven wrapper (mvnw) for you.",
   "scripts": {
-    "dev": "node --watch --env-file-if-exists=.env src/index.js",
-    "start": "node --env-file-if-exists=.env src/index.js",
-    "db:setup": "node --env-file-if-exists=.env scripts/setup-db.js"
-  },
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.6",
-    "express": "^5.3.0",
-    "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.24.6"
+    "dev": "node scripts/mvnw.mjs -ntp -q spring-boot:run",
+    "start": "node scripts/mvnw.mjs -ntp -q spring-boot:run",
+    "db:setup": "node scripts/mvnw.mjs -ntp -q compile spring-boot:run -Pdb-setup",
+    "compile": "node scripts/mvnw.mjs -ntp -q compile",
+    "build": "node scripts/mvnw.mjs -ntp -q package"
   }
 }

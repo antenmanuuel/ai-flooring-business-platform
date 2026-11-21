@@ -1,0 +1,14 @@
+target/
+.env
+# Photos uploaded through the site (product photos and quote request photos)
+uploads/
+
+# IDE files (shared IntelliJ run configurations live in .run/)
+.idea/
+*.iml
+out/
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath

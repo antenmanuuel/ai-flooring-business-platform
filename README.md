@@ -76,23 +76,24 @@ Do this once, after cloning.
 
 ## Running the app
 
-Use two terminals.
-
-Server (http://localhost:5050):
+From the repo root, start the server and the website together:
 
 ```bash
-cd server
 npm run dev
 ```
 
-Website (http://localhost:5173):
+Then open http://localhost:5173. The website forwards `/api` requests to the server on http://localhost:5050.
+
+Output from each one is prefixed with `[server]` or `[client]`. Ctrl+C stops both, and if one of them stops (for example, the server can't start because port 5050 is in use), the other is stopped too.
+
+To run them separately instead, use two terminals:
 
 ```bash
-cd client
-npm run dev
+cd server && npm run dev   # server, http://localhost:5050
+cd client && npm run dev   # website, http://localhost:5173
 ```
 
-Then open http://localhost:5173. The website forwards `/api` requests to the server.
+Both ports must be free. If another app is already using 5050, the server won't start; if 5173 is taken, the website moves to another port but still sends its requests to whatever is running on 5050.
 
 The website reloads on save. After changing Java code, stop the server (Ctrl+C) and start it again, or run it from an IDE that rebuilds on save (Spring Boot DevTools then restarts it automatically).
 
@@ -120,6 +121,17 @@ The server can't start while something else (such as another copy of the project
 
 ## Commands
 
+From the repo root (shortcuts; the root has no packages to install):
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Starts the server and the website together |
+| `npm run dev:server` | Starts only the server |
+| `npm run dev:client` | Starts only the website |
+| `npm run db:setup` | Creates the database, tables and admin account. Safe to run again |
+| `npm run build` | Builds the server and the website for production |
+| `npm run lint` | Checks the website code with oxlint |
+
 Server, from `server/`:
 
 | Command | What it does |
@@ -140,6 +152,13 @@ Website, from `client/`:
 | `npm run build` | Builds the website for production |
 | `npm run lint` | Checks the code with oxlint |
 
-## Test account
+## Test accounts
 
-Admin: `annajohnson@flooring.com` / `Anna@12345`
+| Role | Email | Password |
+|---|---|---|
+| Admin (Anna) | `annajohnson@flooring.com` | `Anna@12345` |
+| Client (John Doe) | `john@demo.com` | `John@123456` |
+
+`npm run db:setup` creates only the admin account. To get a client account on a new database, register on the website, then approve the account as the admin on the Clients page.
+
+Uploaded photos (products and quote requests) are saved in `server/uploads/`, which isn't committed to git.

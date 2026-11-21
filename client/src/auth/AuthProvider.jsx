@@ -17,6 +17,16 @@ function AuthProvider({ children }) {
       .finally(() => setLoading(false))
   }, [])
 
+  // If any request comes back 401 (session expired, account deleted or disabled), forget the
+  // logged-in client so protected pages send the user to the login page.
+  useEffect(() => {
+    const id = api.interceptors.response.use(undefined, (err) => {
+      if (err.response?.status === 401) setClient(null)
+      return Promise.reject(err)
+    })
+    return () => api.interceptors.response.eject(id)
+  }, [])
+
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password })
     setClient(data.client)

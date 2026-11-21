@@ -35,7 +35,7 @@ function AdminLayout() {
     <div className="min-h-screen md:flex">
       <aside className="flex flex-col border-line bg-cream px-4 py-6 md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:border-r">
         <Link to="/" className="px-2 font-serif text-xl leading-tight font-semibold">
-          Anna Johnson
+          Anna
           <span className="block text-copper">Flooring</span>
         </Link>
         <p className="mt-1 px-2 text-sm text-muted">Owner dashboard</p>

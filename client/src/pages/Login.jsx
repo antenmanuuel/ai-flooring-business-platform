@@ -17,8 +17,8 @@ function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   // Arriving from registration pre-fills the email; arriving from a protected page returns there after login.
-  // Otherwise admins go to their dashboard and clients to the home page.
-  const redirectFor = (user) => location.state?.from || (user.role === 'admin' ? '/admin' : '/')
+  // Otherwise each user goes to their own dashboard: /admin for Anna, /client for clients.
+  const redirectFor = (user) => location.state?.from || (user.role === 'admin' ? '/admin' : '/client')
 
   const [form, setForm] = useState({ email: location.state?.email || '', password: '' })
   const [touched, setTouched] = useState({})

@@ -7,7 +7,9 @@ import AuthProvider from './auth/AuthProvider.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
+    {/* useTransitions={false}: page changes happen right away, together with login changes.
+        Otherwise logging out of a protected page lands on /login instead of the home page. */}
+    <BrowserRouter useTransitions={false}>
       <AuthProvider>
         <App />
       </AuthProvider>

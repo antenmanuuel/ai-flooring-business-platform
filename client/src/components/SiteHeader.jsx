@@ -1,8 +1,9 @@
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 
-const plainLink = 'rounded-md px-3 py-2 font-medium hover:text-copper'
-const buttonLink = 'rounded-md bg-espresso px-4 py-2 font-medium text-white hover:bg-espresso-dark'
+// whitespace-nowrap keeps "Log in" on one line on narrow phones.
+const plainLink = 'rounded-md px-3 py-2 font-medium whitespace-nowrap hover:text-copper'
+const buttonLink = 'rounded-md bg-espresso px-4 py-2 font-medium whitespace-nowrap text-white hover:bg-espresso-dark'
 
 function SiteHeader() {
   const { pathname } = useLocation()
@@ -21,11 +22,10 @@ function SiteHeader() {
         <span className="hidden px-3 text-muted sm:inline">
           Hi, <span className="font-medium text-ink">{client.firstName}</span>
         </span>
-        {client.role === 'admin' && (
-          <Link to="/admin" className={plainLink}>
-            Dashboard
-          </Link>
-        )}
+        {/* Anna's dashboard is /admin; a client's is /client. */}
+        <Link to={client.role === 'admin' ? '/admin' : '/client'} className={plainLink}>
+          Dashboard
+        </Link>
         <button type="button" onClick={handleLogout} className={plainLink}>
           Log out
         </button>
@@ -52,7 +52,7 @@ function SiteHeader() {
   return (
     <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-5 sm:px-6">
       <Link to="/" className="font-serif text-lg font-semibold tracking-tight">
-        Anna Johnson <span className="text-copper">Flooring</span>
+        Anna <span className="text-copper">Flooring</span>
       </Link>
       <nav className="flex min-h-9 items-center gap-2 text-sm">{nav}</nav>
     </header>

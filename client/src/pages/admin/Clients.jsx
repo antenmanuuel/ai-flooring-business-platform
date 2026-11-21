@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import api from '../../api/client'
-import { darkButton, formatDate, plainButton, redButton, statusBadge } from './clientHelpers'
+import { darkButton, formatDate, fullName, plainButton, redButton, statusBadge } from './clientHelpers'
 
 const filters = [
   { value: 'all', label: 'All' },
@@ -15,9 +15,14 @@ function Clients() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get('/admin/clients').then(({ data }) => setClients(data.clients))
+    api
+      .get('/admin/clients')
+      .then(({ data }) => setClients(data.clients))
+      .catch(() => setError('Could not load clients. Please refresh the page.'))
+      .finally(() => setLoading(false))
   }, [])
 
   // Approve, Disable and Re-enable all just change the status.
@@ -33,13 +38,13 @@ function Clients() {
 
   // Delete, and Decline for a pending sign-up, remove the account.
   async function removeClient(client, action) {
-    if (!window.confirm(`${action} ${client.fullName}? This permanently removes the account.`)) return
+    if (!window.confirm(`${action} ${fullName(client)}? This permanently removes the account.`)) return
     setError('')
     try {
       await api.delete(`/admin/clients/${client.id}`)
       setClients((prev) => prev.filter((c) => c.id !== client.id))
-    } catch {
-      setError('Could not remove that client. Please try again.')
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not remove that client. Please try again.')
     }
   }
 
@@ -47,7 +52,7 @@ function Clients() {
   // Search matches the client number (e.g. C12), name, email, phone or address.
   const query = search.trim().toLowerCase()
   const matchesSearch = (c) =>
-    `c${c.id} ${c.fullName} ${c.email} ${c.phone} ${c.address} ${c.city} ${c.state}`.toLowerCase().includes(query)
+    `c${c.id} ${c.firstName} ${c.lastName} ${c.email} ${c.phone} ${c.address} ${c.city} ${c.state}`.toLowerCase().includes(query)
 
   const shown = clients.filter((c) => (filter === 'all' || c.status === filter) && matchesSearch(c))
 
@@ -87,16 +92,13 @@ function Clients() {
       )}
 
       <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-cream">
-        <table className="w-full min-w-[56rem] text-left">
+        <table className="w-full text-left">
           <thead className="border-b border-line bg-sand/60 text-xs tracking-wide text-muted uppercase">
             <tr>
               <th className="px-4 py-3 font-medium">Client</th>
               <th className="px-4 py-3 font-medium">Contact</th>
               <th className="px-4 py-3 font-medium">Registered</th>
-              {/* Requests, orders and bills are 0 until those tables exist. */}
-              <th className="px-4 py-3 font-medium">Requests</th>
-              <th className="px-4 py-3 font-medium">Orders</th>
-              <th className="px-4 py-3 font-medium">Bills</th>
+              {/* Add Requests, Orders and Bills count columns here once those tables exist. */}
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3" />
             </tr>
@@ -107,9 +109,9 @@ function Clients() {
                 <td className="px-4 py-4">
                   <Link
                     to={`/admin/clients/${client.id}`}
-                    className="whitespace-nowrap underline-offset-4 hover:text-copper hover:underline"
+                    className="underline-offset-4 hover:text-copper hover:underline"
                   >
-                    {client.fullName}
+                    {fullName(client)}
                   </Link>
                   <p className="text-sm text-muted">C{client.id}</p>
                 </td>
@@ -120,9 +122,6 @@ function Clients() {
                   </p>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">{formatDate(client.createdAt)}</td>
-                <td className="px-4 py-4">0</td>
-                <td className="px-4 py-4">0</td>
-                <td className="px-4 py-4">0</td>
                 <td className="px-4 py-4">
                   <span
                     className={`rounded-full px-3 py-1 text-sm whitespace-nowrap ${statusBadge[client.status].className}`}
@@ -163,8 +162,8 @@ function Clients() {
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-muted">
-                  {query ? 'No clients match your search.' : 'No clients here yet.'}
+                <td colSpan={5} className="px-4 py-10 text-center text-muted">
+                  {loading ? 'Loading clients...' : query ? 'No clients match your search.' : 'No clients here yet.'}
                 </td>
               </tr>
             )}

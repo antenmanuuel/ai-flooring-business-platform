@@ -1,6 +1,5 @@
 package com.annajohnson.flooring.web;
 
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -22,11 +21,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.annajohnson.flooring.auth.AuthCookies;
 import com.annajohnson.flooring.auth.AuthInterceptor;
 import com.annajohnson.flooring.auth.JwtService;
+import com.annajohnson.flooring.auth.LoginAttemptLimiter;
+import com.annajohnson.flooring.auth.PasswordRules;
 import com.annajohnson.flooring.client.ClientRepository;
 import com.annajohnson.flooring.client.ClientRow;
 import com.annajohnson.flooring.client.LoginRow;
 import com.annajohnson.flooring.client.NewClient;
 import com.annajohnson.flooring.client.PublicClient;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -37,24 +40,23 @@ public class AuthController {
 	private static final Pattern PHONE_PATTERN = Pattern.compile("^[0-9+()\\-. ]{7,20}$");
 	// 3 to 10 letters, digits, spaces or dashes, so non-US postal codes work too, e.g. 48201 or 48201-1234
 	private static final Pattern ZIP_PATTERN = Pattern.compile("^[A-Za-z0-9\\- ]{3,10}$");
-	private static final int MIN_PASSWORD_LENGTH = 8;
-	// BCrypt only uses the first 72 bytes of a password (and Spring's encoder rejects longer ones).
-	private static final int MAX_PASSWORD_BYTES = 72;
 
 	private final ClientRepository clients;
 	private final BCryptPasswordEncoder passwords;
 	private final JwtService jwt;
 	private final AuthCookies authCookies;
+	private final LoginAttemptLimiter limiter;
 	// Compared against when no account matches, so "wrong email" and "wrong password"
 	// take the same time and can't be told apart.
 	private final String dummyHash;
 
 	public AuthController(ClientRepository clients, BCryptPasswordEncoder passwords, JwtService jwt,
-			AuthCookies authCookies) {
+			AuthCookies authCookies, LoginAttemptLimiter limiter) {
 		this.clients = clients;
 		this.passwords = passwords;
 		this.jwt = jwt;
 		this.authCookies = authCookies;
+		this.limiter = limiter;
 		this.dummyHash = passwords.encode("not-a-real-password");
 	}
 
@@ -87,12 +89,8 @@ public class AuthController {
 		if (!ZIP_PATTERN.matcher(zipCode).matches()) errors.put("zipCode", "Enter a valid ZIP code.");
 		requireText(errors, "country", "Country", country, 100);
 		if (!PHONE_PATTERN.matcher(phone).matches()) errors.put("phone", "Enter a valid phone number.");
-		if (password.length() < MIN_PASSWORD_LENGTH) {
-			errors.put("password", "Password must be at least " + MIN_PASSWORD_LENGTH + " characters.");
-		}
-		else if (byteLength(password) > MAX_PASSWORD_BYTES) {
-			errors.put("password", "Password must be 72 characters or fewer.");
-		}
+		String passwordProblem = PasswordRules.problemWith(password);
+		if (passwordProblem != null) errors.put("password", passwordProblem);
 
 		if (!errors.isEmpty()) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "Please fix the highlighted fields.", errors);
@@ -112,9 +110,14 @@ public class AuthController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("client", created));
 	}
 
-	/** Body: { email, password }. On success sets the httpOnly login cookie and returns the client. */
+	/**
+	 * Body: { email, password }. On success sets the httpOnly login cookie and returns the client.
+	 * After too many wrong passwords for one email or from one IP address, answers 429 for a while
+	 * (see LoginAttemptLimiter).
+	 */
 	@PostMapping("/login")
-	public ResponseEntity<Map<String, PublicClient>> login(@RequestBody(required = false) Map<String, Object> body) {
+	public ResponseEntity<Map<String, PublicClient>> login(@RequestBody(required = false) Map<String, Object> body,
+			HttpServletRequest request) {
 		String email = readString(body, "email").strip().toLowerCase(Locale.ROOT);
 		String password = readString(body, "password");
 
@@ -125,11 +128,17 @@ public class AuthController {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "Please fill in your email and password.", errors);
 		}
 
+		// The client's IP as Tomcat sees it. Behind a proxy this needs server.forward-headers-strategy.
+		String ipKey = "ip:" + request.getRemoteAddr();
+		String emailKey = "email:" + email;
+		limiter.check(ipKey, LoginAttemptLimiter.MAX_PER_IP);
+		limiter.check(emailKey, LoginAttemptLimiter.MAX_PER_ACCOUNT);
+
 		Optional<LoginRow> row = clients.findLoginByEmail(email);
 		String hash = row.map(LoginRow::passwordHash).orElse(dummyHash);
 		// Always run one bcrypt comparison so response time doesn't reveal whether the email exists.
 		boolean passwordOk;
-		if (byteLength(password) <= MAX_PASSWORD_BYTES) {
+		if (!PasswordRules.tooLong(password)) {
 			passwordOk = passwords.matches(password, hash);
 		}
 		else {
@@ -138,9 +147,13 @@ public class AuthController {
 			passwordOk = false;
 		}
 		if (row.isEmpty() || !passwordOk) {
+			limiter.recordFailure(ipKey);
+			limiter.recordFailure(emailKey);
 			// Same message either way so the form doesn't reveal which emails have accounts.
 			throw new ApiException(HttpStatus.UNAUTHORIZED, "Incorrect email or password.");
 		}
+
+		limiter.reset(emailKey);
 
 		// Only checked after the password is right, so this doesn't reveal anything to strangers.
 		ClientRow client = row.get().client();
@@ -175,9 +188,5 @@ public class AuthController {
 	private static void requireText(Map<String, String> errors, String field, String label, String value, int max) {
 		if (value.isEmpty()) errors.put(field, label + " is required.");
 		else if (value.length() > max) errors.put(field, label + " must be " + max + " characters or fewer.");
-	}
-
-	private static int byteLength(String value) {
-		return value.getBytes(StandardCharsets.UTF_8).length;
 	}
 }

@@ -3,8 +3,10 @@ package com.annajohnson.flooring.upload;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,17 +40,53 @@ public class ImageStorage {
 	private static final Map<String, String> IMAGE_TYPES = Map.of("image/jpeg", ".jpg", "image/png", ".png",
 			"image/webp", ".webp");
 
+	private static final byte[] PNG_SIGNATURE = { (byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n' };
+
 	private static final Logger log = LoggerFactory.getLogger(ImageStorage.class);
 
-	/** The problem with an uploaded file, shown under the form field, or null if it's fine. */
+	/**
+	 * The problem with an uploaded file, shown under the form field, or null if it's fine. The type
+	 * the browser reports is checked against the file's first bytes, so a renamed file of another kind
+	 * is rejected.
+	 */
 	public String problemWith(MultipartFile file) {
+		String notAnImage = "Image must be a JPG, PNG or WebP file.";
 		if (!IMAGE_TYPES.containsKey(file.getContentType())) {
-			return "Image must be a JPG, PNG or WebP file.";
+			return notAnImage;
 		}
 		if (file.getSize() > MAX_BYTES) {
 			return "Image must be 5 MB or smaller.";
 		}
+		if (!startsLike(file, file.getContentType())) {
+			return notAnImage;
+		}
 		return null;
+	}
+
+	/** Whether the file starts with the signature of its claimed image type. */
+	private static boolean startsLike(MultipartFile file, String type) {
+		byte[] head = new byte[12];
+		int read;
+		try (InputStream in = file.getInputStream()) {
+			read = in.readNBytes(head, 0, head.length);
+		}
+		catch (IOException ex) {
+			return false;
+		}
+		return switch (type) {
+			// JPEG: FF D8 FF
+			case "image/jpeg" -> read >= 3 && (head[0] & 0xFF) == 0xFF && (head[1] & 0xFF) == 0xD8 && (head[2] & 0xFF) == 0xFF;
+			// PNG: 89 'P' 'N' 'G' CR LF 1A LF
+			case "image/png" -> read >= 8 && Arrays.equals(Arrays.copyOf(head, 8), PNG_SIGNATURE);
+			// WebP: "RIFF" <size> "WEBP"
+			case "image/webp" -> read >= 12 && ascii(head, 0, "RIFF") && ascii(head, 8, "WEBP");
+			default -> false;
+		};
+	}
+
+	private static boolean ascii(byte[] bytes, int offset, String text) {
+		return Arrays.equals(Arrays.copyOfRange(bytes, offset, offset + text.length()),
+				text.getBytes(StandardCharsets.US_ASCII));
 	}
 
 	/**

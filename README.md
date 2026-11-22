@@ -113,11 +113,17 @@ IntelliJ is for the server only; run the website from a terminal as above.
 | Run configuration | What it does |
 |---|---|
 | **Server** | Starts the Spring Boot server (http://localhost:5050) |
-| **Database setup** | Creates the database, tables and admin account. Safe to run again |
+| **Database setup** | Creates the database, applies new migrations and creates the admin account. Safe to run again |
 
 While **Server** is running, Java changes are applied when you switch away from IntelliJ (or press the Update button in the Run window), and Spring Boot DevTools restarts the server.
 
 The server can't start while something else (such as another copy of the project) is using port 5050.
+
+## Changing the database
+
+Tables are created and changed by migrations: numbered SQL files in `server/src/main/resources/db/migration`, run by [Flyway](https://documentation.red-gate.com/flyway). The server applies any new ones when it starts (so does `npm run db:setup`), and records each one in the `flyway_schema_history` table so it runs only once.
+
+To change a table, add the next file, for example `V2__add_quote_tables.sql`, with plain MySQL statements (`CREATE TABLE`, `ALTER TABLE`, ...). Don't edit a migration that has already run; the server refuses to start if one changes. Write a new one instead.
 
 ## Commands
 
@@ -128,7 +134,7 @@ From the repo root (shortcuts; the root has no packages to install):
 | `npm run dev` | Starts the server and the website together |
 | `npm run dev:server` | Starts only the server |
 | `npm run dev:client` | Starts only the website |
-| `npm run db:setup` | Creates the database, tables and admin account. Safe to run again |
+| `npm run db:setup` | Creates the database, applies new migrations and creates the admin account. Safe to run again |
 | `npm run build` | Builds the server and the website for production |
 | `npm run lint` | Checks the website code with oxlint |
 
@@ -137,7 +143,7 @@ Server, from `server/`:
 | Command | What it does |
 |---|---|
 | `npm run dev` | Starts the server (`npm start` does the same) |
-| `npm run db:setup` | Creates the database, tables and admin account. Safe to run again |
+| `npm run db:setup` | Creates the database, applies new migrations and creates the admin account. Safe to run again |
 | `npm run compile` | Compiles the server (quick check after editing Java code) |
 | `npm run build` | Builds the server for production (`target/flooring-server-0.0.1-SNAPSHOT.jar`) |
 

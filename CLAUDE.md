@@ -12,7 +12,7 @@ The root `package.json` has shortcut scripts only (no dependencies): `npm run de
 
 Server, from `server/`:
 - `npm run dev` (or `npm start`) — API on port 5050. Java changes are not hot-reloaded from the terminal; restart, or rebuild from an IDE so DevTools restarts it.
-- `npm run db:setup` — runs `setup/DatabaseSetup.java` instead of the web app (the `db-setup` profile in `pom.xml` swaps the main class): creates `DB_NAME`, applies `db/schema.sql`, creates/resets the admin account. Idempotent, never deletes data.
+- `npm run db:setup` — runs `setup/DatabaseSetup.java` instead of the web app (the `db-setup` profile in `pom.xml` swaps the main class): creates `DB_NAME`, applies pending Flyway migrations, creates/resets the admin account. Idempotent, never deletes data. The web server also applies pending migrations on startup.
 - `npm run compile` — fast compile check for Java changes
 - `npm run build` — jar in `server/target/`
 - Underlying Maven commands: `./mvnw spring-boot:run [-Pdb-setup]`, `./mvnw -q compile`, `./mvnw package`
@@ -48,9 +48,10 @@ Seeded admin: `annajohnson@flooring.com` / `Anna@12345` (overridable via `ADMIN_
 - Controllers take request bodies as `Map<String, Object>` and validate by hand (see `AuthController.readString`) so the `{ error, fields }` messages match what the client forms show, rather than using Bean Validation.
 - Admin queries always filter `role = 'client'` so the admin row can't be listed, modified or deleted.
 
-**Database (`server/src/main/resources/db/schema.sql`)**
+**Database (Flyway migrations in `server/src/main/resources/db/migration`)**
 - Tables: `Client` (clients and the admin, `role` enum), `Product` (the catalog), `Request` (numbers start at 1001, shown as R-1001), `RequestRoom` and `RequestPhoto`. New registrations get `status = 'pending'` and can't log in until an admin approves them (`active`); `disabled` blocks login and ends existing sessions.
-- Every statement must be re-runnable (`CREATE TABLE IF NOT EXISTS`) because `db:setup` runs the whole file each time. There's no migration tool, so altering an existing table must be done by hand or by recreating the DB.
+- Schema changes go in a new file `V<n>__description.sql` (next number, plain MySQL; `ALTER TABLE` is fine). Never edit an applied migration: Flyway checksums them and refuses to start if one changes. Each runs once, recorded in `flyway_schema_history`.
+- `V1__create_tables.sql` keeps `IF NOT EXISTS` because databases created before Flyway already had those tables; `spring.flyway.baseline-on-migrate=true` with `baseline-version=0` lets them adopt migrations (V1 then runs as a no-op). DatabaseSetup reads the same two settings.
 - Foreign keys keep quote requests: a client or product used by a request can't be deleted (the API returns 409; disable the client instead).
 - Admins are created only by `DatabaseSetup`; `/api/auth/register` always creates `role = 'client'`.
 

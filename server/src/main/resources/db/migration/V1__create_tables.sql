@@ -1,6 +1,9 @@
--- Table definitions. Don't run this file by hand; run `npm run db:setup`
--- from server/ instead, which (via setup/DatabaseSetup.java) creates the database named in server/.env and runs this file inside it.
--- Every statement must be safe to run again (use IF NOT EXISTS).
+-- V1: the starting tables. Flyway applies migrations in version order, once each, and records them in
+-- the flyway_schema_history table. Never edit a migration that has been applied; add a new
+-- V<n>__description.sql file instead (ALTER TABLE is fine there).
+--
+-- IF NOT EXISTS is kept here only so databases created before migrations existed (which already
+-- have these tables) can run V1 without errors.
 
 -- Everyone who signs in: clients register through the website (role defaults to 'client');
 -- the admin is created by setup/DatabaseSetup.java.

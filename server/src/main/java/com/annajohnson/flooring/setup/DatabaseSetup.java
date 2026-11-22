@@ -1,8 +1,5 @@
 package com.annajohnson.flooring.setup;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -12,6 +9,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
+import org.flywaydb.core.api.MigrationInfo;
+import org.flywaydb.core.api.output.MigrateResult;
 import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
@@ -23,15 +24,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
  * Sets up the database on macOS, Windows or Linux:
  * <ol>
  * <li>creates the database named in server/.env (DB_NAME) if it doesn't exist</li>
- * <li>creates the tables from src/main/resources/db/schema.sql</li>
+ * <li>applies the migrations in src/main/resources/db/migration (Flyway), which create and update the tables</li>
  * <li>creates the admin account (or resets its password if it already exists)</li>
  * </ol>
  * Run from server/ with {@code npm run db:setup}. Safe to run as many times as you like;
  * it never deletes existing data. It does not start the web server.
  */
 public final class DatabaseSetup {
-
-	private static final String SCHEMA = "/db/schema.sql";
 
 	private DatabaseSetup() {
 	}
@@ -64,10 +63,10 @@ public final class DatabaseSetup {
 				statement.execute("CREATE DATABASE IF NOT EXISTS `" + dbName + "`");
 				statement.execute("USE `" + dbName + "`");
 				step("Database \"" + dbName + "\" is ready");
-
-				statement.execute(readSchema());
-				step("Tables created (existing tables and data were left alone)");
 			}
+
+			migrate(env, "jdbc:mysql://" + host + ":" + port + "/" + dbName + "?allowPublicKeyRetrieval=true", user,
+					password);
 
 			String passwordHash = new BCryptPasswordEncoder(10).encode(adminPassword);
 			try (PreparedStatement insert = connection.prepareStatement("""
@@ -88,7 +87,7 @@ public final class DatabaseSetup {
 				step(affected == 1 ? "Admin account created" : "Admin account already existed; password reset");
 			}
 		}
-		catch (SQLException | IOException ex) {
+		catch (SQLException | FlywayException ex) {
 			fail("Setup failed: " + ex.getMessage(), null);
 		}
 
@@ -130,12 +129,25 @@ public final class DatabaseSetup {
 		}
 	}
 
-	private static String readSchema() throws IOException {
-		try (InputStream in = DatabaseSetup.class.getResourceAsStream(SCHEMA)) {
-			if (in == null) {
-				throw new IOException(SCHEMA + " is missing from the classpath.");
-			}
-			return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+	/**
+	 * Applies any migrations the database doesn't have yet, with the same baseline settings as the
+	 * web server (application.properties), so both treat a database the same way.
+	 */
+	private static void migrate(Environment env, String url, String user, String password) {
+		Flyway flyway = Flyway.configure()
+			.dataSource(url, user, password)
+			.locations("classpath:db/migration")
+			.baselineOnMigrate(env.getProperty("spring.flyway.baseline-on-migrate", Boolean.class, true))
+			.baselineVersion(env.getProperty("spring.flyway.baseline-version", "0"))
+			.load();
+		MigrateResult result = flyway.migrate();
+		MigrationInfo current = flyway.info().current();
+		String version = current == null ? "none" : current.getVersion().toString();
+		if (result.migrationsExecuted == 0) {
+			step("Tables are up to date (migration version " + version + ")");
+		}
+		else {
+			step("Applied " + result.migrationsExecuted + " migration(s); now at version " + version);
 		}
 	}
 

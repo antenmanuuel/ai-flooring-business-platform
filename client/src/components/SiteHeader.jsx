@@ -26,6 +26,12 @@ function SiteHeader() {
         <Link to={client.role === 'admin' ? '/admin' : '/client'} className={plainLink}>
           Dashboard
         </Link>
+        {/* Clients can change their password on their account page; Anna has no account page. */}
+        {client.role === 'client' && (
+          <Link to="/client/account" className={plainLink}>
+            Account
+          </Link>
+        )}
         <button type="button" onClick={handleLogout} className={plainLink}>
           Log out
         </button>

@@ -6,6 +6,7 @@ import Products from './pages/admin/Products'
 import Quotes from './pages/admin/Quotes'
 import Requests from './pages/admin/Requests'
 import ComingSoon from './pages/admin/ComingSoon'
+import ClientAccount from './pages/ClientAccount'
 import ClientDashboard from './pages/ClientDashboard'
 import ClientProject from './pages/ClientProject'
 import Overview from './pages/admin/Overview'
@@ -26,6 +27,7 @@ function App() {
       <Route path="/client" element={<ClientDashboard />} />
       <Route path="/client/request" element={<RequestQuote />} />
       <Route path="/client/requests/:id" element={<ClientProject />} />
+      <Route path="/client/account" element={<ClientAccount />} />
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Overview />} />
         <Route path="clients" element={<Clients />} />

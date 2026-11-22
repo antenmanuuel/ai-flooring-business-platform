@@ -36,6 +36,15 @@
 			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<!-- Database migrations: numbered SQL files in src/main/resources/db/migration, applied on startup -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-mysql</artifactId>
+		</dependency>
 		<!-- Only the BCrypt password encoder, not the full Spring Security filter chain -->
 		<dependency>
 			<groupId>org.springframework.security</groupId>

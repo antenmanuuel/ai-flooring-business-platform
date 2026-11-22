@@ -28,7 +28,7 @@ public class ClientRepository {
 
 	public Optional<ClientRow> findById(long id) {
 		return jdbc.sql("""
-				SELECT client_id, first_name, last_name, email, role, status, address, city, state, zip_code
+				SELECT client_id, first_name, last_name, email, role, status, address, city, state, zip_code, updated_at
 				FROM Client WHERE client_id = ?""")
 			.param(id)
 			.query(ClientRepository::mapClientRow)
@@ -37,11 +37,23 @@ public class ClientRepository {
 
 	public Optional<LoginRow> findLoginByEmail(String email) {
 		return jdbc.sql("""
-				SELECT client_id, first_name, last_name, email, password_hash, role, status, address, city, state, zip_code
+				SELECT client_id, first_name, last_name, email, password_hash, role, status, address, city, state, zip_code,
+				       updated_at
 				FROM Client WHERE email = ?""")
 			.param(email)
 			.query((rs, n) -> new LoginRow(mapClientRow(rs, n), rs.getString("password_hash")))
 			.optional();
+	}
+
+	public Optional<String> findPasswordHash(long id) {
+		return jdbc.sql("SELECT password_hash FROM Client WHERE client_id = ?").param(id).query(String.class).optional();
+	}
+
+	/** Saves a new password hash for a client (never the admin). Bumps updated_at, which ends older sessions. */
+	public void updatePassword(long clientId, String passwordHash) {
+		jdbc.sql("UPDATE Client SET password_hash = ? WHERE client_id = ? AND role = 'client'")
+			.params(passwordHash, clientId)
+			.update();
 	}
 
 	/** Inserts a new sign-up (role 'client', status 'pending' by default) and returns its id. */
@@ -131,6 +143,7 @@ public class ClientRepository {
 	private static ClientRow mapClientRow(ResultSet rs, int rowNum) throws SQLException {
 		return new ClientRow(rs.getLong("client_id"), rs.getString("first_name"), rs.getString("last_name"),
 				rs.getString("email"), rs.getString("role"), rs.getString("status"), rs.getString("address"),
-				rs.getString("city"), rs.getString("state"), rs.getString("zip_code"));
+				rs.getString("city"), rs.getString("state"), rs.getString("zip_code"),
+				rs.getTimestamp("updated_at").toInstant());
 	}
 }

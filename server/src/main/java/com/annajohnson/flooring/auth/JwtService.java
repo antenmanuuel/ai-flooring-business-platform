@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import com.annajohnson.flooring.client.ClientRow;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 
@@ -35,8 +36,19 @@ public class JwtService {
 		this.key = new SecretKeySpec(bytes, "HmacSHA256");
 	}
 
+	/** A valid token's client id and when it was issued. */
+	public record Session(long clientId, Instant issuedAt) {
+	}
+
+	/**
+	 * Signs a token for the client. It's never dated before the row's last change (e.g. a password
+	 * change), so it isn't rejected as an older session if the database clock runs slightly ahead.
+	 */
 	public String sign(ClientRow client) {
 		Instant now = Instant.now();
+		if (client.updatedAt() != null && client.updatedAt().isAfter(now)) {
+			now = client.updatedAt();
+		}
 		return Jwts.builder()
 			.subject(String.valueOf(client.id()))
 			.claim("role", client.role())
@@ -47,13 +59,16 @@ public class JwtService {
 	}
 
 	/**
-	 * Returns the client id from a valid, unexpired token.
+	 * Returns the client id and issue time from a valid, unexpired token.
 	 * @throws JwtException if the token is tampered with, expired or malformed
 	 */
-	public long verify(String token) {
-		String subject = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload().getSubject();
+	public Session verify(String token) {
+		Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+		if (claims.getIssuedAt() == null) {
+			throw new JwtException("Token has no issue time.");
+		}
 		try {
-			return Long.parseLong(subject);
+			return new Session(Long.parseLong(claims.getSubject()), claims.getIssuedAt().toInstant());
 		}
 		catch (NumberFormatException ex) {
 			throw new JwtException("Token subject is not a client id.");

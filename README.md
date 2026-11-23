@@ -119,6 +119,36 @@ While **Server** is running, Java changes are applied when you switch away from 
 
 The server can't start while something else (such as another copy of the project) is using port 5050.
 
+## Tests
+
+| Suite | Command | What it covers |
+|---|---|---|
+| Server API tests (JUnit, MockMvc) | `npm test` in `server/` | Registration and login, login limits, products and photos, quote requests, password changes, health checks |
+| Website tests (Vitest, React Testing Library) | `npm test` in `client/` | Forms, redirects, the quote estimate and what each page sends to the server, with the API mocked |
+| End-to-end tests (Playwright) | `npm run test:e2e` in `client/` | Sign-up and approval, sending a quote request with a photo, changing a password, in a real browser |
+
+- The server tests use their own database, `anna_flooring_springboot_test`, created automatically with the MySQL login in `server/.env`. They empty it before each test and refuse to run against a database whose name doesn't end in `_test`.
+- The end-to-end tests start their own server (port 5060) and website (port 5180) with their own database, `anna_flooring_springboot_e2e`, so they don't clash with `npm run dev`. Before the first run, install the browser: `npx playwright install chromium` in `client/`.
+- GitHub Actions runs all three suites, the website build and the Docker build on every push and pull request (`.github/workflows/ci.yml`).
+
+## Running with Docker
+
+To run the whole app without installing Java or MySQL, use [Docker Desktop](https://www.docker.com/products/docker-desktop/):
+
+```bash
+docker compose up --build     # first time, or after code changes
+docker compose down           # stop (data is kept; add -v to delete it)
+```
+
+Then open http://localhost:8080. This starts MySQL, a one-time setup step (migrations and the admin account), the server, and the website served by nginx, which forwards `/api` to the server. The database and uploaded photos are kept in Docker volumes.
+
+Docker has its own database, separate from your local MySQL: only the admin account exists at first. The defaults in `compose.yaml` are for your own machine. Before running it anywhere public, set `JWT_SECRET` and `MYSQL_ROOT_PASSWORD` in a `.env` file next to `compose.yaml` (`WEB_PORT` changes the port).
+
+## Health checks
+
+- `GET /api/health`: the server is running.
+- `GET /api/actuator/health`: Spring Boot Actuator's check, including the database; returns `{"status":"UP"}`. No other Actuator endpoints are exposed.
+
 ## Changing the database
 
 Tables are created and changed by migrations: numbered SQL files in `server/src/main/resources/db/migration`, run by [Flyway](https://documentation.red-gate.com/flyway). The server applies any new ones when it starts (so does `npm run db:setup`), and records each one in the `flyway_schema_history` table so it runs only once.
@@ -137,6 +167,8 @@ From the repo root (shortcuts; the root has no packages to install):
 | `npm run db:setup` | Creates the database, applies new migrations and creates the admin account. Safe to run again |
 | `npm run build` | Builds the server and the website for production |
 | `npm run lint` | Checks the website code with oxlint |
+| `npm test` | Runs the server tests, then the website tests |
+| `npm run test:e2e` | Runs the end-to-end tests in a real browser (Playwright) |
 
 Server, from `server/`:
 
@@ -146,6 +178,7 @@ Server, from `server/`:
 | `npm run db:setup` | Creates the database, applies new migrations and creates the admin account. Safe to run again |
 | `npm run compile` | Compiles the server (quick check after editing Java code) |
 | `npm run build` | Builds the server for production (`target/flooring-server-0.0.1-SNAPSHOT.jar`) |
+| `npm test` | Runs the server's API tests |
 
 These run the Maven wrapper for you; the server has no npm packages to install.
 
@@ -157,6 +190,8 @@ Website, from `client/`:
 | `npm run dev` | Starts the website |
 | `npm run build` | Builds the website for production |
 | `npm run lint` | Checks the code with oxlint |
+| `npm test` | Runs the website tests once (`npm run test:watch` re-runs them as you save) |
+| `npm run test:e2e` | Runs the end-to-end tests (`npm run test:e2e:ui` opens Playwright's test viewer) |
 
 ## Test accounts
 

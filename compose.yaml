@@ -1,0 +1,78 @@
+# Runs the whole app in Docker: MySQL, the Spring Boot server and the website.
+#   docker compose up --build      then open http://localhost:8080
+#   docker compose down            stop (data is kept in volumes; add -v to delete it)
+#
+# Settings can be overridden in a .env file next to this one (git-ignored), for example:
+#   JWT_SECRET=<a long random string>      MYSQL_ROOT_PASSWORD=...      WEB_PORT=8080
+# The defaults are for running on your own machine only. Set a real JWT_SECRET and database
+# password before putting this anywhere public.
+
+x-server-env: &server-env
+  DB_HOST: mysql
+  DB_PORT: 3306
+  DB_USER: root
+  DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-flooring-local}
+  DB_NAME: anna_flooring_springboot_db
+  JWT_SECRET: ${JWT_SECRET:-local-docker-secret-change-me-before-deploying}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-flooring-local}
+      MYSQL_DATABASE: anna_flooring_springboot_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    # Not published on the host, so it doesn't clash with a local MySQL on 3306.
+
+  # One-off: applies migrations and creates the admin account (setup/DatabaseSetup.java), then exits.
+  setup:
+    build: ./server
+    environment:
+      <<: *server-env
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-annajohnson@flooring.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Anna@12345}
+    # DatabaseSetup checks for a .env file; here the settings come from the environment instead.
+    entrypoint: >-
+      sh -c "touch .env && java -cp app.jar
+      -Dloader.main=com.annajohnson.flooring.setup.DatabaseSetup
+      org.springframework.boot.loader.launch.PropertiesLauncher"
+    user: root
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  server:
+    build: ./server
+    environment: *server-env
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/5050'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    # Reached only through the website's nginx (/api), so port 5050 stays free on the host.
+
+  web:
+    build: ./client
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  uploads:

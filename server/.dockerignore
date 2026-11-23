@@ -1,0 +1,7 @@
+target/
+uploads/
+.env
+.idea/
+*.iml
+.run/
+node_modules/

@@ -17,12 +17,14 @@ public class WebConfig implements WebMvcConfigurer {
 	private final AuthInterceptor authInterceptor;
 	private final AdminInterceptor adminInterceptor;
 	private final ClientInterceptor clientInterceptor;
+	private final ImageStorage images;
 
 	public WebConfig(AuthInterceptor authInterceptor, AdminInterceptor adminInterceptor,
-			ClientInterceptor clientInterceptor) {
+			ClientInterceptor clientInterceptor, ImageStorage images) {
 		this.authInterceptor = authInterceptor;
 		this.adminInterceptor = adminInterceptor;
 		this.clientInterceptor = clientInterceptor;
+		this.images = images;
 	}
 
 	/** Which paths need a login, an admin, or a client. Interceptors run in the order added. */
@@ -36,8 +38,10 @@ public class WebConfig implements WebMvcConfigurer {
 	/** Uploaded photos, e.g. /api/uploads/products/&lt;file&gt; (saved by ImageStorage). Public, like the catalog. */
 	@Override
 	public void addResourceHandlers(ResourceHandlerRegistry registry) {
+		// A folder location must end in "/"; toUri() only adds it when the folder already exists.
+		String location = images.uploadsDir().toUri().toString();
 		registry.addResourceHandler(ImageStorage.URL_PREFIX + "**")
-			.addResourceLocations(ImageStorage.UPLOADS_DIR.toUri().toString());
+			.addResourceLocations(location.endsWith("/") ? location : location + "/");
 	}
 
 	/** In development the Vite dev server proxies /api, so the browser never makes cross-origin calls. */

@@ -13,6 +13,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,12 +24,12 @@ import org.springframework.web.multipart.MultipartFile;
  * <li>product photos: uploads/products, served at /api/uploads/products/&lt;file&gt;</li>
  * <li>request photos: uploads/requests, served at /api/uploads/requests/&lt;file&gt;</li>
  * </ul>
- * The folder is relative to the working directory, so the server must be started from server/.
+ * The folder is app.uploads-dir (default "uploads", relative to the working directory, so the
+ * server must be started from server/). Tests point it somewhere else.
  */
 @Component
 public class ImageStorage {
 
-	public static final Path UPLOADS_DIR = Path.of("uploads").toAbsolutePath();
 	public static final String URL_PREFIX = "/api/uploads/";
 	public static final String PRODUCTS = "products";
 	public static final String REQUESTS = "requests";
@@ -43,6 +44,17 @@ public class ImageStorage {
 	private static final byte[] PNG_SIGNATURE = { (byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n' };
 
 	private static final Logger log = LoggerFactory.getLogger(ImageStorage.class);
+
+	private final Path uploadsDir;
+
+	public ImageStorage(@Value("${app.uploads-dir:uploads}") String uploadsDir) {
+		this.uploadsDir = Path.of(uploadsDir).toAbsolutePath().normalize();
+	}
+
+	/** The folder uploads are saved in, served at {@link #URL_PREFIX}. */
+	public Path uploadsDir() {
+		return uploadsDir;
+	}
 
 	/**
 	 * The problem with an uploaded file, shown under the form field, or null if it's fine. The type
@@ -94,7 +106,7 @@ public class ImageStorage {
 	 * called "floor.jpg" don't overwrite each other) and returns the URL to store in the database.
 	 */
 	public String save(String folder, MultipartFile file) {
-		Path dir = UPLOADS_DIR.resolve(folder);
+		Path dir = uploadsDir.resolve(folder);
 		String name = UUID.randomUUID() + IMAGE_TYPES.get(file.getContentType());
 		try (InputStream in = file.getInputStream()) {
 			Files.createDirectories(dir);
@@ -111,8 +123,8 @@ public class ImageStorage {
 		if (imageUrl == null || !imageUrl.startsWith(URL_PREFIX)) {
 			return;
 		}
-		Path file = UPLOADS_DIR.resolve(imageUrl.substring(URL_PREFIX.length())).normalize();
-		if (!file.startsWith(UPLOADS_DIR)) {
+		Path file = uploadsDir.resolve(imageUrl.substring(URL_PREFIX.length())).normalize();
+		if (!file.startsWith(uploadsDir)) {
 			return;
 		}
 		try {

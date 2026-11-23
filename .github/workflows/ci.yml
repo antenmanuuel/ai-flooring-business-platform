@@ -104,6 +104,23 @@ jobs:
             client/test-results
           retention-days: 7
 
+  ai:
+    name: AI assistant tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.32'
+          enable-cache: true
+          cache-dependency-glob: ai/uv.lock
+      # The tests use LangChain's fake chat model and fake embeddings: no API key or model download.
+      - run: uv sync --frozen
+      - run: uv run pytest -q
+
   docker:
     name: Docker images build
     runs-on: ubuntu-latest

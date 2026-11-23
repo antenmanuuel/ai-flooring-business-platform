@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+# ChromaDB index and the downloaded embedding model; rebuilt with `uv run python -m app.ingest`
+.chroma/
+.fastembed/

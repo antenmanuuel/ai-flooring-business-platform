@@ -61,6 +61,14 @@ Seeded admin: `annajohnson@flooring.com` / `Anna@12345` (overridable via `ADMIN_
 - Foreign keys keep quote requests: a client or product used by a request can't be deleted (the API returns 409; disable the client instead).
 - Admins are created only by `DatabaseSetup`; `/api/auth/register` always creates `role = 'client'`.
 
+**AI assistant (`ai/`, Python 3.13 with uv)**
+- A FastAPI service on port 8000: RAG with LangChain + ChromaDB + Claude (`langchain-anthropic`, model from `AI_MODEL`, default `claude-opus-5-5`; Claude Opus 5.5 rejects `temperature`, so don't set one). Settings in `ai/.env` (`ai/.env.example`), read by `app/config.py`.
+- `app/knowledge.py` loads `ai/knowledge/*.md` (split by `#`/`##` headings, then 900-char chunks; HTML comments are stripped) and the catalog from Spring's public `GET /api/products` (one Document per product). `app/store.py` wraps FastEmbed (`bge-small-en-v1.5`, local ONNX) as a LangChain `Embeddings` and persists Chroma in `ai/.chroma`. `app/rag.py` retrieves top-k (the last user message is searched with the new one for follow-ups), numbers sources `[n]` in the system prompt and streams with `PROMPT | llm | StrOutputParser()`. `app/main.py`: `POST /api/assistant/chat` streams SSE events `sources`, `token`, `done`/`error`; in-memory per-IP rate limit (last `X-Forwarded-For` entry); 503 when there's no API key.
+- Admin assistant: `POST /api/assistant/admin/chat` reads the `token` cookie and `app/admin_data.py` calls Spring's `/api/admin/{overview,requests,clients,products}` with it (`ADMIN_API_URL`), so Spring's interceptors decide access (401/403 are passed through). The data is summarized as text into the `AdminAssistant` prompt's `{data}` each question (not embedded). Read-only: it can't call any write endpoint. Its own rate limit is keyed by the token.
+- The index is built on first start if empty; `uv run python -m app.ingest` rebuilds it. `langchain-community` was dropped (being sunset); don't add it back.
+- The Vite proxy sends `/api/assistant` to 8000 (listed before `/api`), nginx does the same in Docker (`proxy_buffering off`). `client/src/components/AssistantChat.jsx` is the chat, with two variants: `public` (mounted in `App.jsx` outside `/admin`) and `admin` (mounted in `AdminLayout.jsx`). `components/streamChat.js` reads the SSE stream.
+- Tests (`uv run pytest` in `ai/`) use `FakeListChatModel` + `DeterministicFakeEmbedding` with an in-memory Chroma collection, so they need no key or download. The user's goal for this feature is a resume piece showing LangChain and ChromaDB.
+
 **Client (`client/src`)**
 - React 19 with `react-router` v8 (import from `react-router`, not `react-router-dom`). Routes are in `App.jsx`.
 - `auth/AuthProvider.jsx` calls `/auth/me` on load and exposes `{ client, loading, login, logout }` via `useAuth()` from `auth/AuthContext.js` (split into two files to satisfy the `only-export-components` lint rule).

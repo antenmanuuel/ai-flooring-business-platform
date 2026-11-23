@@ -1,21 +1,24 @@
-// Starts the server (server/, port 5050) and the website (client/, port 5173) together:
+// Starts the server (server/, port 5050), the website (client/, port 5173) and the AI assistant
+// (ai/, port 8000) together:
 //   npm run dev   (from the repo root)
-// Each output line is prefixed with [server] or [client]. Ctrl+C stops both, and if one of them
-// exits (e.g. port 5050 is already in use) the other is stopped too.
+// Each output line is prefixed with [server], [client] or [ai]. Ctrl+C stops all of them, and if one
+// exits (e.g. port 5050 is already in use) the others are stopped too.
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const isWindows = process.platform === 'win32'
 
+// Each app runs `npm run dev` in its folder unless it gives its own command.
 const apps = [
   { name: 'server', color: '\x1b[33m' }, // yellow
   { name: 'client', color: '\x1b[36m' }, // cyan
+  { name: 'ai', color: '\x1b[35m', command: ['uv', 'run', 'uvicorn', 'app.main:app', '--port', '8000', '--reload'] }, // magenta
 ]
 
 let stopping = false
-const children = apps.map(({ name, color }) => {
-  const child = spawn('npm', ['run', 'dev'], {
+const children = apps.map(({ name, color, command = ['npm', 'run', 'dev'] }) => {
+  const child = spawn(command[0], command.slice(1), {
     cwd: `${root}${name}`,
     shell: isWindows, // npm is npm.cmd on Windows, which needs a shell
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -40,7 +43,7 @@ const children = apps.map(({ name, color }) => {
   })
   child.on('exit', (code) => {
     if (!stopping) {
-      console.error(`${prefix}exited with code ${code ?? 1}; stopping the other one.`)
+      console.error(`${prefix}exited with code ${code ?? 1}; stopping the others.`)
       stopAll(code || 1)
     }
   })

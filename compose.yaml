@@ -1,9 +1,10 @@
-# Runs the whole app in Docker: MySQL, the Spring Boot server and the website.
+# Runs the whole app in Docker: MySQL, the Spring Boot server, the AI assistant and the website.
 #   docker compose up --build      then open http://localhost:8080
 #   docker compose down            stop (data is kept in volumes; add -v to delete it)
 #
 # Settings can be overridden in a .env file next to this one (git-ignored), for example:
 #   JWT_SECRET=<a long random string>      MYSQL_ROOT_PASSWORD=...      WEB_PORT=8080
+#   ANTHROPIC_API_KEY=<your key>           (without it the assistant answers "not set up yet")
 # The defaults are for running on your own machine only. Set a real JWT_SECRET and database
 # password before putting this anywhere public.
 
@@ -64,6 +65,27 @@ services:
     restart: unless-stopped
     # Reached only through the website's nginx (/api), so port 5050 stays free on the host.
 
+  # The AI assistant (ai/): LangChain + ChromaDB + Claude. Builds its index on first start from the
+  # guides and the server's catalog; rebuild later with: docker compose exec ai python -m app.ingest
+  ai:
+    build: ./ai
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
+      CATALOG_URL: http://server:5050/api/products
+      ADMIN_API_URL: http://server:5050/api/admin
+    volumes:
+      - ai-data:/data
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/assistant/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    restart: unless-stopped
+
   web:
     build: ./client
     ports:
@@ -71,8 +93,11 @@ services:
     depends_on:
       server:
         condition: service_healthy
+      ai:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   mysql-data:
   uploads:
+  ai-data:

@@ -1,4 +1,5 @@
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useLocation } from 'react-router'
+import AssistantChat from './components/AssistantChat'
 import AdminLayout from './components/admin/AdminLayout'
 import ClientDetail from './pages/admin/ClientDetail'
 import Clients from './pages/admin/Clients'
@@ -19,28 +20,33 @@ import RequestQuote from './pages/RequestQuote'
 const adminSections = ['Orders', 'Bills', 'Reports']
 
 function App() {
+  const { pathname } = useLocation()
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/client" element={<ClientDashboard />} />
-      <Route path="/client/request" element={<RequestQuote />} />
-      <Route path="/client/requests/:id" element={<ClientProject />} />
-      <Route path="/client/account" element={<ClientAccount />} />
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Overview />} />
-        <Route path="clients" element={<Clients />} />
-        <Route path="products" element={<Products />} />
-        <Route path="requests" element={<Requests />} />
-        <Route path="quotes" element={<Quotes />} />
-        <Route path="clients/:id" element={<ClientDetail />} />
-        {adminSections.map((title) => (
-          <Route key={title} path={title.toLowerCase()} element={<ComingSoon title={title} />} />
-        ))}
-      </Route>
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/client" element={<ClientDashboard />} />
+        <Route path="/client/request" element={<RequestQuote />} />
+        <Route path="/client/requests/:id" element={<ClientProject />} />
+        <Route path="/client/account" element={<ClientAccount />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Overview />} />
+          <Route path="clients" element={<Clients />} />
+          <Route path="products" element={<Products />} />
+          <Route path="requests" element={<Requests />} />
+          <Route path="quotes" element={<Quotes />} />
+          <Route path="clients/:id" element={<ClientDetail />} />
+          {adminSections.map((title) => (
+            <Route key={title} path={title.toLowerCase()} element={<ComingSoon title={title} />} />
+          ))}
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      {/* The public AI assistant, on every page except Anna's dashboard. */}
+      {!pathname.startsWith('/admin') && <AssistantChat />}
+    </>
   )
 }
 

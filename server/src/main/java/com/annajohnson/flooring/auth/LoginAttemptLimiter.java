@@ -62,6 +62,11 @@ public class LoginAttemptLimiter {
 		}
 	}
 
+	/** Forgets every failure. Used by tests so one test's failed logins don't lock out the next. */
+	public void clear() {
+		failures.clear();
+	}
+
 	/** Forgets a key's failures, e.g. after a successful login. */
 	public void reset(String key) {
 		failures.remove(key);

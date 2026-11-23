@@ -7,6 +7,7 @@
     "start": "node scripts/mvnw.mjs -ntp -q spring-boot:run",
     "db:setup": "node scripts/mvnw.mjs -ntp -q compile spring-boot:run -Pdb-setup",
     "compile": "node scripts/mvnw.mjs -ntp -q compile",
+    "test": "node scripts/mvnw.mjs -ntp test",
     "build": "node scripts/mvnw.mjs -ntp -q package"
   }
 }

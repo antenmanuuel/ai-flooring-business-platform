@@ -1,5 +1,6 @@
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthContext'
+import AssistantChat from '../AssistantChat'
 
 const sections = [
   { to: '/admin', label: 'Overview', end: true },
@@ -58,6 +59,9 @@ function AdminLayout() {
       <main className="min-w-0 flex-1 bg-[#faf6ef] px-4 py-8 sm:px-8 md:px-12 md:py-10">
         <Outlet />
       </main>
+
+      {/* Anna's AI assistant: knows the live requests, clients and products (read-only). */}
+      <AssistantChat variant="admin" />
     </div>
   )
 }

@@ -3,6 +3,8 @@
                                      sources, token..., done (or error)
     POST /api/assistant/admin/chat   Anna's assistant: same, plus live business data; needs an admin's
                                      login cookie (checked by Spring Boot)
+    POST /api/assistant/client/chat  a logged-in client's assistant: same, plus their own quote requests;
+                                     needs a client's login cookie (checked by Spring Boot)
     GET  /api/assistant/health       status, index size, whether Claude is configured
 Run from ai/:  uv run uvicorn app.main:app --port 8000 --reload
 """
@@ -19,9 +21,10 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from .admin_data import AdminAccessError, AdminDataSource
+from .client_data import ClientAccessError, ClientDataSource
 from .config import Settings, get_settings
 from .knowledge import load_catalog, load_guides
-from .rag import AdminAssistant, Assistant
+from .rag import AdminAssistant, Assistant, ClientAssistant
 from .store import count, make_embeddings, make_vector_store, rebuild
 
 log = logging.getLogger("assistant")
@@ -84,8 +87,11 @@ async def lifespan(app: FastAPI):
         llm = make_llm(settings)
         app.state.assistant = Assistant(app.state.store, llm, settings.top_k)
         app.state.admin_assistant = AdminAssistant(app.state.store, llm, settings.top_k)
+        app.state.client_assistant = ClientAssistant(app.state.store, llm, settings.top_k)
     if not hasattr(app.state, "admin_source"):
         app.state.admin_source = AdminDataSource(settings.admin_api_url)
+    if not hasattr(app.state, "client_source"):
+        app.state.client_source = ClientDataSource(settings.client_api_url)
     yield
 
 
@@ -95,6 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     s = app.state.settings
     app.state.limiter = RateLimiter(s.rate_limit_per_minute, s.rate_limit_per_day)
     app.state.admin_limiter = RateLimiter(s.admin_rate_limit_per_minute, s.admin_rate_limit_per_day)
+    app.state.client_limiter = RateLimiter(s.rate_limit_per_minute, s.rate_limit_per_day)
 
     @app.get("/api/assistant/health")
     def health():
@@ -115,19 +122,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/assistant/admin/chat")
     async def admin_chat(body: ChatRequest, request: Request):
-        token = request.cookies.get("token")
-        if not token:
-            raise HTTPException(401, "Not logged in.")
-        assistant = ready(app, body, getattr(app.state, "admin_assistant", None))
-        try:
-            # Spring Boot checks the cookie: only a logged-in admin gets the data.
-            data = await app.state.admin_source.snapshot(token)
-        except AdminAccessError as err:
-            raise HTTPException(err.status, str(err))
-        refused = app.state.admin_limiter.check(token)
-        if refused:
-            raise HTTPException(429, refused)
-        return stream_response(assistant, body.message, history_of(app, body), data=data)
+        return await logged_in_chat(app, body, request, "admin_assistant", app.state.admin_source,
+                                    app.state.admin_limiter)
+
+    @app.post("/api/assistant/client/chat")
+    async def client_chat(body: ChatRequest, request: Request):
+        return await logged_in_chat(app, body, request, "client_assistant", app.state.client_source,
+                                    app.state.client_limiter)
 
     return app
 
@@ -140,6 +141,24 @@ def ready(app: FastAPI, body: ChatRequest, assistant: Assistant | None) -> Assis
     if assistant is None:
         raise HTTPException(503, "The assistant isn't set up yet.")
     return assistant
+
+
+async def logged_in_chat(app: FastAPI, body: ChatRequest, request: Request, assistant_name: str, source,
+                         limiter: RateLimiter) -> StreamingResponse:
+    """The admin and client assistants: forward the login cookie to Spring Boot for the caller's data, which
+    also decides access (its 401/403 are passed through), then answer with that data in the prompt."""
+    token = request.cookies.get("token")
+    if not token:
+        raise HTTPException(401, "Not logged in.")
+    assistant = ready(app, body, getattr(app.state, assistant_name, None))
+    try:
+        data = await source.snapshot(token)
+    except (AdminAccessError, ClientAccessError) as err:
+        raise HTTPException(err.status, str(err))
+    refused = limiter.check(token)
+    if refused:
+        raise HTTPException(429, refused)
+    return stream_response(assistant, body.message, history_of(app, body), data=data)
 
 
 def history_of(app: FastAPI, body: ChatRequest) -> list[dict]:

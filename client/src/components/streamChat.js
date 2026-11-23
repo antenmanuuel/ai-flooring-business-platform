@@ -26,7 +26,7 @@ export async function streamChat({ endpoint = '/api/assistant/chat', message, hi
     buffer = events.pop()
     for (const raw of events) {
       const event = parseEvent(raw)
-      if (event?.type === 'sources') onSources(event.data)
+      if (event?.type === 'sources') onSources?.(event.data)
       else if (event?.type === 'token') onToken(event.data)
       else if (event?.type === 'error') throw new Error(event.data.error)
     }

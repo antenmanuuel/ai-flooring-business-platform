@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     catalog_url: str = "http://localhost:5050/api/products"
     # The admin assistant reads live data here, forwarding the admin's login cookie.
     admin_api_url: str = "http://localhost:5050/api/admin"
+    # The client assistant reads the logged-in client's own requests here, forwarding their cookie.
+    client_api_url: str = "http://localhost:5050/api/client"
 
     # ChromaDB, persisted on disk so restarts don't re-embed everything.
     chroma_dir: Path = AI_DIR / ".chroma"

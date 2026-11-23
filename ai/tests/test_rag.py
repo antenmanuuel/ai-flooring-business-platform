@@ -23,7 +23,7 @@ def test_prompt_contains_rules_sources_history_and_question():
         question="How do I clean oak?",
     )
     assert [m.type for m in messages] == ["system", "human", "ai", "human"]
-    assert "cite it like [1]" in messages[0].content and "Sweep often." in messages[0].content
+    assert "only the numbered sources" in messages[0].content and "[1]" in messages[0].content and "Sweep often." in messages[0].content
     assert messages[-1].content == "How do I clean oak?"
 
 

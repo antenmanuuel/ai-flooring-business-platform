@@ -1,4 +1,5 @@
 import { Route, Routes, useLocation } from 'react-router'
+import { useAuth } from './auth/AuthContext'
 import AssistantChat from './components/AssistantChat'
 import AdminLayout from './components/admin/AdminLayout'
 import ClientDetail from './pages/admin/ClientDetail'
@@ -19,8 +20,14 @@ import RequestQuote from './pages/RequestQuote'
 
 const adminSections = ['Orders', 'Bills', 'Reports']
 
+// Pages without the website chat: the login and sign-up forms, and Anna's dashboard (which has its own).
+const noChat = (pathname) => pathname === '/login' || pathname === '/register' || pathname.startsWith('/admin')
+
 function App() {
   const { pathname } = useLocation()
+  const { client } = useAuth()
+  // A logged-in client gets the assistant that also knows their own projects.
+  const chatVariant = client?.role === 'client' ? 'client' : 'public'
   return (
     <>
       <Routes>
@@ -44,8 +51,8 @@ function App() {
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
-      {/* The public AI assistant, on every page except Anna's dashboard. */}
-      {!pathname.startsWith('/admin') && <AssistantChat />}
+      {/* The AI assistant. The key starts a new conversation when someone logs in or out. */}
+      {!noChat(pathname) && <AssistantChat key={chatVariant} variant={chatVariant} />}
     </>
   )
 }

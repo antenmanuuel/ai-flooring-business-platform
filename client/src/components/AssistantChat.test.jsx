@@ -67,17 +67,15 @@ describe('AssistantChat', () => {
     expect(screen.queryByRole('region', { name: 'Ask Anna Flooring' })).not.toBeInTheDocument()
   })
 
-  it('streams the answer and lists only the sources it cites', async () => {
+  it('streams the answer without citation numbers or a sources list', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => sseResponse(reply)))
     await openChat()
     await userEvent.type(screen.getByLabelText('Your question'), 'How do I clean oak?{Enter}')
 
-    expect(await screen.findByText(/White oak is \$7.50 per sq ft \[2\]\./)).toBeInTheDocument()
+    expect(await screen.findByText(/White oak is \$7.50 per sq ft\.$/)).toBeInTheDocument()
     expect(screen.getByText('How do I clean oak?')).toBeInTheDocument()
-    const list = screen.getByRole('list', { name: 'Sources' })
-    expect(list).toHaveTextContent('[1] Caring for hardwood - Everyday cleaning')
-    expect(list).toHaveTextContent('[2] Catalog: Natural White Oak')
-    expect(list).not.toHaveTextContent('FAQ') // retrieved but not cited
+    expect(screen.queryByText(/\[\d\]/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/sources/i)).not.toBeInTheDocument()
     expect(screen.getByLabelText('Your question')).toHaveValue('')
   })
 
@@ -104,6 +102,17 @@ describe('AssistantChat', () => {
     await screen.findByText(/White oak/)
 
     expect(fetch).toHaveBeenCalledWith('/api/assistant/admin/chat', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it("the client variant asks the client endpoint about the client's projects", async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => sseResponse(reply)))
+    render(<AssistantChat variant="client" />)
+    await userEvent.click(screen.getByRole('button', { name: 'Ask Anna Flooring' }))
+    expect(screen.getByRole('region', { name: 'Ask Anna Flooring' })).toHaveTextContent('your projects')
+    await userEvent.click(screen.getByRole('button', { name: "What's the status of my request?" }))
+    await screen.findByText(/White oak/)
+
+    expect(fetch).toHaveBeenCalledWith('/api/assistant/client/chat', expect.objectContaining({ method: 'POST' }))
   })
 
   it('shows why a question was refused', async () => {

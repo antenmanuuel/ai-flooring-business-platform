@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import ChatAnswer from './ChatAnswer'
 import { streamChat } from './streamChat'
 
 // How many earlier messages are sent along, so follow-up questions make sense.
 const HISTORY_LIMIT = 6
 
-// The two assistants share this component:
-//   public - visitors and clients, answers from the guides and catalog (every page except /admin)
+// The three assistants share this component:
+//   public - visitors, answers from the guides and catalog (every page except /admin)
+//   client - a logged-in client, which also sees their own quote requests (replaces public for them)
 //   admin  - Anna's assistant in the dashboard, which also sees live requests, clients and products
 const VARIANTS = {
   public: {
@@ -17,6 +19,16 @@ const VARIANTS = {
       'Hi! I can answer questions about flooring materials, care, choosing a floor for a room, installation and how quotes work. What would you like to know?',
     suggestions: ['Which floors are best with pets?', 'How do I clean hardwood?', 'How do I get a quote?'],
     placeholder: 'Ask about flooring…',
+  },
+  client: {
+    endpoint: '/api/assistant/client/chat',
+    button: 'Ask Anna Flooring',
+    title: 'Ask Anna Flooring',
+    subtitle: 'AI answers about your projects, our guides and catalog',
+    greeting:
+      'Hi! I can answer questions about your projects and quote requests, and about flooring care, materials, installation and how quotes work. What would you like to know?',
+    suggestions: ["What's the status of my request?", 'What did I ask for in each room?', 'How should I get ready for installation?'],
+    placeholder: 'Ask about your projects or flooring…',
   },
   admin: {
     endpoint: '/api/assistant/admin/chat',
@@ -31,11 +43,11 @@ const VARIANTS = {
 }
 
 // A chat button in the corner that opens a panel. Answers come from the AI assistant service (ai/),
-// which searches the guides (and, for Anna, her live data) and cites the guides it used.
+// which answers from the guides (and the client's or Anna's live data). Sources aren't shown to readers.
 function AssistantChat({ variant = 'public' }) {
   const config = VARIANTS[variant]
   const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState([]) // { role: 'user' | 'assistant', content, sources? }
+  const [messages, setMessages] = useState([]) // { role: 'user' | 'assistant', content }
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -57,7 +69,7 @@ function AssistantChat({ variant = 'public' }) {
     const text = question.trim()
     if (!text || busy) return
     const history = messages.slice(-HISTORY_LIMIT).map(({ role, content }) => ({ role, content }))
-    setMessages((prev) => [...prev, { role: 'user', content: text }, { role: 'assistant', content: '', sources: [] }])
+    setMessages((prev) => [...prev, { role: 'user', content: text }, { role: 'assistant', content: '' }])
     setInput('')
     setError('')
     setBusy(true)
@@ -68,7 +80,6 @@ function AssistantChat({ variant = 'public' }) {
         message: text,
         history,
         signal: abortRef.current.signal,
-        onSources: (sources) => updateReply(() => ({ sources })),
         onToken: (token) => updateReply((reply) => ({ content: reply.content + token })),
       })
     } catch (err) {
@@ -139,8 +150,11 @@ function AssistantChat({ variant = 'public' }) {
             </p>
           ) : (
             <div key={i} className="mr-4 rounded-lg bg-white px-3 py-2">
-              <p className="whitespace-pre-wrap">{m.content || (busy && i === messages.length - 1 ? 'Thinking…' : '')}</p>
-              {m.content && m.sources?.length > 0 && <Sources sources={m.sources} answer={m.content} />}
+              {m.content ? (
+                <ChatAnswer text={m.content} />
+              ) : (
+                busy && i === messages.length - 1 && <p className="text-muted">Thinking…</p>
+              )}
             </div>
           ),
         )}
@@ -171,23 +185,6 @@ function AssistantChat({ variant = 'public' }) {
         </button>
       </form>
     </section>
-  )
-}
-
-// The sources the answer actually cites ([1], [2], ...), so readers can see where it came from.
-function Sources({ sources, answer }) {
-  const cited = sources.filter((s) => answer.includes(`[${s.number}]`))
-  if (cited.length === 0) return null
-  return (
-    <ul className="mt-2 space-y-0.5 border-t border-line pt-2 text-xs text-muted" aria-label="Sources">
-      {cited.map((s) => (
-        <li key={s.number}>
-          [{s.number}] {s.kind === 'catalog' ? 'Catalog: ' : ''}
-          {s.title}
-          {s.section && s.kind !== 'catalog' ? ` - ${s.section}` : ''}
-        </li>
-      ))}
-    </ul>
   )
 }
 

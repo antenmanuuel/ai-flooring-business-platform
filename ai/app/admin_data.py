@@ -84,16 +84,19 @@ def format_requests(requests: list[dict]) -> str:
             f"{r.get('preferredDate') or 'flexible'} | budget {_money(r.get('budget'))} | total {r.get('totalArea')} sq ft | "
             f"photos {len(r.get('photos', []))}"
         )
-        for room in r.get("rooms", []):
-            size = f"{room['length']} x {room['width']} ft, " if room.get("length") and room.get("width") else ""
-            lines.append(
-                f"    room {room['name']}: {room['productName']} ({_money(room['unitPrice'])}/{room['pricingUnit']}), "
-                f"{size}{room['area']} sq ft, pattern {room['pattern']}, current floor {room.get('currentFlooring') or 'not given'}"
-                f"{', remove existing' if room.get('removeExisting') else ''}"
-            )
+        lines += [f"    {format_room(room)}" for room in r.get("rooms", [])]
         if r.get("notes"):
             lines.append(f"    notes from client: \"{r['notes']}\"")
     return "\n".join(lines)
+
+
+def format_room(room: dict) -> str:
+    size = f"{room['length']} x {room['width']} ft, " if room.get("length") and room.get("width") else ""
+    return (
+        f"room {room['name']}: {room['productName']} ({_money(room['unitPrice'])}/{room['pricingUnit']}), "
+        f"{size}{room['area']} sq ft, pattern {room['pattern']}, current floor {room.get('currentFlooring') or 'not given'}"
+        f"{', remove existing' if room.get('removeExisting') else ''}"
+    )
 
 
 def format_clients(clients: list[dict]) -> str:

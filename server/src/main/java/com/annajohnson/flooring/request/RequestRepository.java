@@ -144,6 +144,18 @@ public class RequestRepository {
 			.toList();
 	}
 
+	/** The client who sent the request a photo belongs to, if the photo exists. */
+	public Optional<Long> findPhotoOwner(String imageUrl) {
+		return jdbc.sql("""
+				SELECT r.client_id
+				FROM RequestPhoto rp
+				JOIN Request r ON r.request_id = rp.request_id
+				WHERE rp.image_url = ?""")
+			.param(imageUrl)
+			.query(Long.class)
+			.optional();
+	}
+
 	/** Requests still waiting for the admin's first quote, oldest first. */
 	public List<NewRequestNotice> findPending() {
 		return jdbc.sql("""

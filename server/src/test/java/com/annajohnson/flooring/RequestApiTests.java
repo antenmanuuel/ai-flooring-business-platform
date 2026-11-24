@@ -6,6 +6,8 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -161,6 +163,31 @@ class RequestApiTests extends ApiTestSupport {
 		mvc.perform(get("/api/admin/clients/" + clientId).cookie(admin))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.requests[0].id").value(id));
+	}
+
+	@Test
+	void requestPhotosAreOnlyForTheirClientAndTheAdmin() throws Exception {
+		long id = createRequest();
+		String body = mvc.perform(get("/api/client/requests/" + id).cookie(client))
+			.andReturn()
+			.getResponse()
+			.getContentAsString();
+		String photo = JsonPath.read(body, "$.request.photos[0]");
+
+		mvc.perform(get(photo).cookie(client))
+			.andExpect(status().isOk())
+			.andExpect(content().contentType("image/jpeg"))
+			.andExpect(header()
+				.string("Cache-Control", "max-age=3600, private"));
+		mvc.perform(get(photo).cookie(adminCookie())).andExpect(status().isOk());
+
+		mvc.perform(get(photo)).andExpect(status().isUnauthorized());
+		insertActiveClient("Bob", "bob@example.com");
+		mvc.perform(get(photo).cookie(login("bob@example.com", PASSWORD)))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.error").value("Photo not found."));
+		mvc.perform(get("/api/uploads/requests/..%2F..%2Fapplication.properties").cookie(client))
+			.andExpect(status().isNotFound());
 	}
 
 	@Test

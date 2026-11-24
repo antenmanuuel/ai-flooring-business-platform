@@ -29,10 +29,12 @@ public class AuthInterceptor implements HandlerInterceptor {
 
 	private final JwtService jwt;
 	private final ClientRepository clients;
+	private final RevokedTokens revokedTokens;
 
-	public AuthInterceptor(JwtService jwt, ClientRepository clients) {
+	public AuthInterceptor(JwtService jwt, ClientRepository clients, RevokedTokens revokedTokens) {
 		this.jwt = jwt;
 		this.clients = clients;
+		this.revokedTokens = revokedTokens;
 	}
 
 	@Override
@@ -52,6 +54,10 @@ public class AuthInterceptor implements HandlerInterceptor {
 		}
 		catch (JwtException | IllegalArgumentException ex) {
 			throw ApiException.unauthorizedAndLogOut(SESSION_EXPIRED);
+		}
+		// Logged out: the token was copied or replayed after its owner logged out.
+		if (revokedTokens.isRevoked(cookie.getValue())) {
+			throw ApiException.unauthorizedAndLogOut("Not logged in.");
 		}
 
 		// Deleted or disabled accounts are logged out straight away.

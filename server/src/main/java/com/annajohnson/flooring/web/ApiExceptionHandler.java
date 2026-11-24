@@ -22,6 +22,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.annajohnson.flooring.auth.AuthCookies;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 /** Turns every error into a JSON body of the form { error, fields? }. */
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -35,10 +37,10 @@ public class ApiExceptionHandler {
 	}
 
 	@ExceptionHandler(ApiException.class)
-	ResponseEntity<Map<String, Object>> handleApi(ApiException ex) {
+	ResponseEntity<Map<String, Object>> handleApi(ApiException ex, HttpServletRequest request) {
 		ResponseEntity.BodyBuilder response = ResponseEntity.status(ex.status());
 		if (ex.clearAuthCookie()) {
-			response.header(HttpHeaders.SET_COOKIE, authCookies.logout().toString());
+			response.header(HttpHeaders.SET_COOKIE, authCookies.logout(request).toString());
 		}
 		return response.body(body(ex.getMessage(), ex.fields()));
 	}

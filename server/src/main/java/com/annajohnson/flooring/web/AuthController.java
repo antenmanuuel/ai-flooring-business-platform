@@ -17,18 +17,22 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.WebUtils;
 
 import com.annajohnson.flooring.auth.AuthCookies;
 import com.annajohnson.flooring.auth.AuthInterceptor;
 import com.annajohnson.flooring.auth.JwtService;
 import com.annajohnson.flooring.auth.LoginAttemptLimiter;
 import com.annajohnson.flooring.auth.PasswordRules;
+import com.annajohnson.flooring.auth.RevokedTokens;
 import com.annajohnson.flooring.client.ClientRepository;
 import com.annajohnson.flooring.client.ClientRow;
 import com.annajohnson.flooring.client.LoginRow;
 import com.annajohnson.flooring.client.NewClient;
 import com.annajohnson.flooring.client.PublicClient;
 
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
@@ -46,17 +50,19 @@ public class AuthController {
 	private final JwtService jwt;
 	private final AuthCookies authCookies;
 	private final LoginAttemptLimiter limiter;
+	private final RevokedTokens revokedTokens;
 	// Compared against when no account matches, so "wrong email" and "wrong password"
 	// take the same time and can't be told apart.
 	private final String dummyHash;
 
 	public AuthController(ClientRepository clients, BCryptPasswordEncoder passwords, JwtService jwt,
-			AuthCookies authCookies, LoginAttemptLimiter limiter) {
+			AuthCookies authCookies, LoginAttemptLimiter limiter, RevokedTokens revokedTokens) {
 		this.clients = clients;
 		this.passwords = passwords;
 		this.jwt = jwt;
 		this.authCookies = authCookies;
 		this.limiter = limiter;
+		this.revokedTokens = revokedTokens;
 		this.dummyHash = passwords.encode("not-a-real-password");
 	}
 
@@ -169,13 +175,23 @@ public class AuthController {
 		}
 
 		return ResponseEntity.ok()
-			.header(HttpHeaders.SET_COOKIE, authCookies.login(jwt.sign(client)).toString())
+			.header(HttpHeaders.SET_COOKIE, authCookies.login(jwt.sign(client), request).toString())
 			.body(Map.of("client", PublicClient.from(client)));
 	}
 
+	/** Clears the cookie and revokes its token, so a copy of it can't be used afterwards. */
 	@PostMapping("/logout")
-	public ResponseEntity<Void> logout() {
-		return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, authCookies.logout().toString()).build();
+	public ResponseEntity<Void> logout(HttpServletRequest request) {
+		Cookie cookie = WebUtils.getCookie(request, AuthCookies.NAME);
+		if (cookie != null && !cookie.getValue().isEmpty()) {
+			try {
+				revokedTokens.revoke(cookie.getValue(), jwt.verify(cookie.getValue()).expiresAt());
+			}
+			catch (JwtException | IllegalArgumentException ex) {
+				// Already invalid or expired: nothing to revoke.
+			}
+		}
+		return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, authCookies.logout(request).toString()).build();
 	}
 
 	/** The logged-in client, or 401 (from AuthInterceptor). */

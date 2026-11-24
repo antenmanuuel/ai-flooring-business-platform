@@ -21,6 +21,8 @@ import com.annajohnson.flooring.auth.PasswordRules;
 import com.annajohnson.flooring.client.ClientRepository;
 import com.annajohnson.flooring.client.ClientRow;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 /** The logged-in client's own account. Every path here needs a logged-in client (enforced in WebConfig). */
 @RestController
 @RequestMapping("/api/client/account")
@@ -48,7 +50,7 @@ public class ClientAccountController {
 	 */
 	@PostMapping("/password")
 	public ResponseEntity<Void> changePassword(@RequestAttribute(AuthInterceptor.CURRENT_CLIENT) ClientRow client,
-			@RequestBody(required = false) Map<String, Object> body) {
+			@RequestBody(required = false) Map<String, Object> body, HttpServletRequest request) {
 		String currentPassword = readString(body, "currentPassword");
 		String newPassword = readString(body, "newPassword");
 
@@ -76,7 +78,7 @@ public class ClientAccountController {
 		clients.updatePassword(client.id(), passwords.encode(newPassword));
 		ClientRow updated = clients.findById(client.id()).orElseThrow();
 		return ResponseEntity.noContent()
-			.header(HttpHeaders.SET_COOKIE, authCookies.login(jwt.sign(updated)).toString())
+			.header(HttpHeaders.SET_COOKIE, authCookies.login(jwt.sign(updated), request).toString())
 			.build();
 	}
 

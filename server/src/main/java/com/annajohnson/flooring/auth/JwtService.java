@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -36,8 +37,8 @@ public class JwtService {
 		this.key = new SecretKeySpec(bytes, "HmacSHA256");
 	}
 
-	/** A valid token's client id and when it was issued. */
-	public record Session(long clientId, Instant issuedAt) {
+	/** A valid token's client id, when it was issued and when it expires. */
+	public record Session(long clientId, Instant issuedAt, Instant expiresAt) {
 	}
 
 	/**
@@ -50,6 +51,9 @@ public class JwtService {
 			now = client.updatedAt();
 		}
 		return Jwts.builder()
+			// A random id makes every token unique, even two issued in the same second, so revoking one
+			// at logout (RevokedTokens) never affects the next login.
+			.id(UUID.randomUUID().toString())
 			.subject(String.valueOf(client.id()))
 			.claim("role", client.role())
 			.issuedAt(Date.from(now))
@@ -64,11 +68,12 @@ public class JwtService {
 	 */
 	public Session verify(String token) {
 		Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
-		if (claims.getIssuedAt() == null) {
-			throw new JwtException("Token has no issue time.");
+		if (claims.getIssuedAt() == null || claims.getExpiration() == null) {
+			throw new JwtException("Token has no issue or expiry time.");
 		}
 		try {
-			return new Session(Long.parseLong(claims.getSubject()), claims.getIssuedAt().toInstant());
+			return new Session(Long.parseLong(claims.getSubject()), claims.getIssuedAt().toInstant(),
+					claims.getExpiration().toInstant());
 		}
 		catch (NumberFormatException ex) {
 			throw new JwtException("Token subject is not a client id.");

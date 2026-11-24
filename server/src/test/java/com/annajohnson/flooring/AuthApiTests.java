@@ -2,6 +2,7 @@ package com.annajohnson.flooring;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -119,6 +120,28 @@ class AuthApiTests extends ApiTestSupport {
 			loginFrom("203.0.113." + (i / 4), "wrong-password").andExpect(status().isUnauthorized());
 		}
 		loginFrom("198.51.100.20", PASSWORD).andExpect(status().isTooManyRequests());
+	}
+
+	@Test
+	void loggedOutTokenStopsWorking() throws Exception {
+		insertActiveClient("Jane", "jane@example.com");
+		Cookie cookie = login("jane@example.com", PASSWORD);
+		mvc.perform(post("/api/auth/logout").cookie(cookie)).andExpect(status().isNoContent());
+
+		// A copy of the cookie kept from before the logout is refused.
+		mvc.perform(get("/api/auth/me").cookie(cookie)).andExpect(status().isUnauthorized());
+		// Logging in again gives a new token that works.
+		mvc.perform(get("/api/auth/me").cookie(login("jane@example.com", PASSWORD))).andExpect(status().isOk());
+	}
+
+	@Test
+	void cookieIsSecureOverHttps() throws Exception {
+		insertActiveClient("Jane", "jane@example.com");
+		String body = "{\"email\":\"jane@example.com\",\"password\":\"" + PASSWORD + "\"}";
+		mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(body).secure(true))
+			.andExpect(cookie().secure("token", true));
+		mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
+			.andExpect(cookie().secure("token", false));
 	}
 
 	@Test

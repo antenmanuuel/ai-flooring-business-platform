@@ -89,18 +89,36 @@ class AuthApiTests extends ApiTestSupport {
 			.andExpect(jsonPath("$.error").value("Incorrect email or password."));
 	}
 
+	private ResultActions loginFrom(String ip, String password) throws Exception {
+		return mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+			.content("{\"email\":\"jane@example.com\",\"password\":\"" + password + "\"}")
+			.with(request -> {
+				request.setRemoteAddr(ip);
+				return request;
+			}));
+	}
+
 	@Test
-	void fiveWrongPasswordsLockTheAccountForAWhile() throws Exception {
+	void fiveWrongPasswordsLockThatAccountForThatAddress() throws Exception {
 		insertActiveClient("Jane", "jane@example.com");
-		String wrong = "{\"email\":\"jane@example.com\",\"password\":\"wrong-password\"}";
 		for (int i = 0; i < 5; i++) {
-			postJson("/api/auth/login", wrong).andExpect(status().isUnauthorized());
+			loginFrom("203.0.113.7", "wrong-password").andExpect(status().isUnauthorized());
 		}
 
-		// Even the right password is refused until the window passes.
-		postJson("/api/auth/login", "{\"email\":\"jane@example.com\",\"password\":\"" + PASSWORD + "\"}")
-			.andExpect(status().isTooManyRequests())
+		// From the guesser's address even the right password is refused until the window passes...
+		loginFrom("203.0.113.7", PASSWORD).andExpect(status().isTooManyRequests())
 			.andExpect(jsonPath("$.error").value("Too many failed attempts. Please try again in 15 minutes."));
+		// ...but the account's owner, somewhere else, can still log in.
+		loginFrom("198.51.100.20", PASSWORD).andExpect(status().isOk());
+	}
+
+	@Test
+	void guessesSpreadOverManyAddressesLockTheAccount() throws Exception {
+		insertActiveClient("Jane", "jane@example.com");
+		for (int i = 0; i < 100; i++) {
+			loginFrom("203.0.113." + (i / 4), "wrong-password").andExpect(status().isUnauthorized());
+		}
+		loginFrom("198.51.100.20", PASSWORD).andExpect(status().isTooManyRequests());
 	}
 
 	@Test

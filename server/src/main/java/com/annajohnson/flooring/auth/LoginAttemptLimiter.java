@@ -23,10 +23,19 @@ import com.annajohnson.flooring.web.ApiException;
 public class LoginAttemptLimiter {
 
 	public static final Duration WINDOW = Duration.ofMinutes(15);
-	/** Wrong passwords for one account (or one client's current password) before it's locked for a while. */
+	/**
+	 * Wrong passwords for one account from one IP address (or one client's current password) before that
+	 * pair is locked for a while. Keyed by account and IP together, so a stranger guessing at an account
+	 * locks out only themselves, not the account's owner.
+	 */
 	public static final int MAX_PER_ACCOUNT = 5;
 	/** Wrong passwords from one IP address, across all accounts. */
 	public static final int MAX_PER_IP = 20;
+	/**
+	 * Wrong passwords for one account from every IP address together. Stops a guessing attack spread over
+	 * many addresses; high enough that one person (held to {@link #MAX_PER_IP}) can't reach it alone.
+	 */
+	public static final int MAX_PER_ACCOUNT_ALL_IPS = 100;
 
 	// Past this many keys, expired ones are cleared out so memory can't grow without bound.
 	private static final int CLEANUP_THRESHOLD = 10_000;

@@ -128,11 +128,14 @@ public class AuthController {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "Please fill in your email and password.", errors);
 		}
 
-		// The client's IP as Tomcat sees it. Behind a proxy this needs server.forward-headers-strategy.
-		String ipKey = "ip:" + request.getRemoteAddr();
-		String emailKey = "email:" + email;
+		// The visitor's IP (from X-Forwarded-For behind a proxy; see server.forward-headers-strategy).
+		String ip = request.getRemoteAddr();
+		String ipKey = "ip:" + ip;
+		String emailKey = "email:" + email + "|ip:" + ip;
+		String accountKey = "email:" + email;
 		limiter.check(ipKey, LoginAttemptLimiter.MAX_PER_IP);
 		limiter.check(emailKey, LoginAttemptLimiter.MAX_PER_ACCOUNT);
+		limiter.check(accountKey, LoginAttemptLimiter.MAX_PER_ACCOUNT_ALL_IPS);
 
 		Optional<LoginRow> row = clients.findLoginByEmail(email);
 		String hash = row.map(LoginRow::passwordHash).orElse(dummyHash);
@@ -149,6 +152,7 @@ public class AuthController {
 		if (row.isEmpty() || !passwordOk) {
 			limiter.recordFailure(ipKey);
 			limiter.recordFailure(emailKey);
+			limiter.recordFailure(accountKey);
 			// Same message either way so the form doesn't reveal which emails have accounts.
 			throw new ApiException(HttpStatus.UNAUTHORIZED, "Incorrect email or password.");
 		}

@@ -50,6 +50,8 @@ def fake_spring(request: httpx.Request) -> httpx.Response:
         return httpx.Response(401, json={"error": "Not logged in."})
     if token != ADMIN_TOKEN:
         return httpx.Response(403, json={"error": "Admins only."})
+    if request.url.path == "/api/admin/requests":
+        assert request.url.params["limit"] == "40"  # only the newest requests are fetched
     return httpx.Response(200, json=SPRING[request.url.path])
 
 

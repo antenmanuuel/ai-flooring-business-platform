@@ -191,6 +191,22 @@ class RequestApiTests extends ApiTestSupport {
 	}
 
 	@Test
+	void adminCanAskForOnlyTheNewestRequests() throws Exception {
+		createRequest();
+		long newest = createRequest();
+		Cookie admin = adminCookie();
+
+		mvc.perform(get("/api/admin/requests").param("limit", "1").cookie(admin))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.requests", hasSize(1)))
+			.andExpect(jsonPath("$.requests[0].id").value(newest))
+			.andExpect(jsonPath("$.requests[0].rooms", hasSize(2)))
+			.andExpect(jsonPath("$.requests[0].photos", hasSize(1)));
+		mvc.perform(get("/api/admin/requests").cookie(admin)).andExpect(jsonPath("$.requests", hasSize(2)));
+		mvc.perform(get("/api/admin/requests").param("limit", "0").cookie(admin)).andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void clientWithRequestsCantBeDeleted() throws Exception {
 		createRequest();
 		mvc.perform(delete("/api/admin/clients/" + clientId).cookie(adminCookie()))

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.annajohnson.flooring.auth.AuthInterceptor;
@@ -33,6 +34,7 @@ import com.annajohnson.flooring.request.RequestSummary;
 public class AdminController {
 
 	private static final String CLIENT_NOT_FOUND = "Client not found.";
+	private static final int MAX_LIMIT = 500;
 
 	private final ClientRepository clients;
 	private final RequestRepository requests;
@@ -118,10 +120,25 @@ public class AdminController {
 		return ResponseEntity.noContent().build();
 	}
 
-	/** Every quote request with its client, rooms and photos, newest first. */
+	/**
+	 * Quote requests with their client, rooms and photos, newest first: all of them, or the newest
+	 * {@code limit} (1 to 500) when given, as the admin assistant does.
+	 */
 	@GetMapping("/requests")
-	public Map<String, List<RequestDetails>> listRequests() {
-		return Map.of("requests", requests.findAllWithClients());
+	public Map<String, List<RequestDetails>> listRequests(@RequestParam(required = false) String limit) {
+		Integer max = null;
+		if (limit != null) {
+			try {
+				max = Integer.parseInt(limit);
+			}
+			catch (NumberFormatException ex) {
+				max = -1;
+			}
+			if (max < 1 || max > MAX_LIMIT) {
+				throw new ApiException(HttpStatus.BAD_REQUEST, "limit must be a whole number from 1 to " + MAX_LIMIT + ".");
+			}
+		}
+		return Map.of("requests", requests.findAllWithClients(max));
 	}
 
 	private static long parseId(String id) {

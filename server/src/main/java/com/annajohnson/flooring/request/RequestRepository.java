@@ -116,23 +116,33 @@ public class RequestRepository {
 		});
 	}
 
-	/** Every request with its client, rooms and photos, newest first (admin). */
-	public List<RequestDetails> findAllWithClients() {
+	/**
+	 * Requests with their client, rooms and photos, newest first (admin): every request, or only the newest
+	 * {@code limit}. Rooms and photos are loaded only for the requests returned.
+	 */
+	public List<RequestDetails> findAllWithClients(Integer limit) {
 		List<RequestRow> requests = jdbc.sql("SELECT " + REQUEST_COLUMNS + """
 				, c.client_id, c.first_name, c.last_name, c.email, c.phone
 				FROM Request r
 				JOIN Client c ON c.client_id = r.client_id
-				ORDER BY r.created_at DESC, r.request_id DESC""")
+				ORDER BY r.created_at DESC, r.request_id DESC""" + (limit == null ? "" : " LIMIT " + limit))
 			.query((rs, n) -> mapRequestRow(rs, new RequestClient(rs.getLong("client_id"), rs.getString("first_name"),
 					rs.getString("last_name"), rs.getString("email"), rs.getString("phone"))))
 			.list();
-		Map<Long, List<RequestRoom>> rooms = jdbc.sql(ROOM_QUERY + "ORDER BY rr.room_id")
+		if (requests.isEmpty()) {
+			return List.of();
+		}
+		List<Long> ids = requests.stream().map(RequestRow::id).toList();
+		Map<Long, List<RequestRoom>> rooms = jdbc.sql(ROOM_QUERY + "WHERE rr.request_id IN (:ids) ORDER BY rr.room_id")
+			.param("ids", ids)
 			.query((rs, n) -> Map.entry(rs.getLong("request_id"), mapRoom(rs, n)))
 			.list()
 			.stream()
 			.collect(Collectors.groupingBy(Map.Entry::getKey,
 					Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
-		Map<Long, List<String>> photos = jdbc.sql("SELECT request_id, image_url FROM RequestPhoto ORDER BY photo_id")
+		Map<Long, List<String>> photos = jdbc
+			.sql("SELECT request_id, image_url FROM RequestPhoto WHERE request_id IN (:ids) ORDER BY photo_id")
+			.param("ids", ids)
 			.query((rs, n) -> Map.entry(rs.getLong("request_id"), rs.getString("image_url")))
 			.list()
 			.stream()

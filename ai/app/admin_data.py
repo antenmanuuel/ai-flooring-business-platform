@@ -29,8 +29,12 @@ class AdminDataSource:
         Boot says the cookie isn't a logged-in admin."""
         async with httpx.AsyncClient(base_url=self.base_url, cookies={"token": token}, timeout=10,
                                      transport=self.transport) as client:
+            # Only the newest requests: the list grows every week, and older ones don't fit in a prompt anyway.
             overview, requests, clients, products = await asyncio.gather(
-                *(self._get(client, path) for path in ("/overview", "/requests", "/clients", "/products"))
+                self._get(client, "/overview"),
+                self._get(client, "/requests", params={"limit": MAX_REQUESTS}),
+                self._get(client, "/clients"),
+                self._get(client, "/products"),
             )
         return "\n\n".join([
             format_overview(overview),
@@ -40,8 +44,8 @@ class AdminDataSource:
         ])
 
     @staticmethod
-    async def _get(client: httpx.AsyncClient, path: str):
-        response = await client.get(path)
+    async def _get(client: httpx.AsyncClient, path: str, params: dict | None = None):
+        response = await client.get(path, params=params)
         if response.status_code in (401, 403):
             message = response.json().get("error", "Admins only.") if response.content else "Admins only."
             raise AdminAccessError(response.status_code, message)
@@ -75,7 +79,7 @@ def format_overview(o: dict) -> str:
 def format_requests(requests: list[dict]) -> str:
     if not requests:
         return "QUOTE REQUESTS\n(none yet)"
-    lines = [f"QUOTE REQUESTS (newest first, {min(len(requests), MAX_REQUESTS)} of {len(requests)})"]
+    lines = [f"QUOTE REQUESTS (the newest {min(len(requests), MAX_REQUESTS)}, newest first)"]
     for r in requests[:MAX_REQUESTS]:
         c = r.get("client") or {}
         lines.append(

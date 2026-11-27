@@ -71,18 +71,19 @@ public class ClientRepository {
 	// ---- Admin dashboard ----
 
 	/** The greeting comes from the database clock and the first name from the admin's own row. */
-	public AdminGreeting greetingFor(long adminId) {
+	public AdminGreeting greetingFor(long adminId, String utcOffset) {
+		// The database clock in UTC, moved to the business's time zone (its offset, e.g. "-05:00").
 		return jdbc.sql("""
 				SELECT
 				  CASE
-				    WHEN HOUR(NOW()) < 12 THEN 'Good morning'
-				    WHEN HOUR(NOW()) < 18 THEN 'Good afternoon'
+				    WHEN HOUR(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', ?)) < 12 THEN 'Good morning'
+				    WHEN HOUR(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', ?)) < 18 THEN 'Good afternoon'
 				    ELSE 'Good evening'
 				  END AS greeting,
 				  first_name
 				FROM Client
 				WHERE client_id = ?""")
-			.param(adminId)
+			.params(utcOffset, utcOffset, adminId)
 			.query((rs, n) -> new AdminGreeting(rs.getString("greeting"), rs.getString("first_name")))
 			.single();
 	}

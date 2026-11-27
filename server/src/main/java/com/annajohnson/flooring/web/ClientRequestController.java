@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.annajohnson.flooring.BusinessTime;
 import com.annajohnson.flooring.auth.AuthInterceptor;
 import com.annajohnson.flooring.client.ClientRow;
 import com.annajohnson.flooring.product.ProductRepository;
@@ -51,13 +52,15 @@ public class ClientRequestController {
 	private final ProductRepository products;
 	private final ImageStorage images;
 	private final JsonMapper json;
+	private final BusinessTime businessTime;
 
 	public ClientRequestController(RequestRepository requests, ProductRepository products, ImageStorage images,
-			JsonMapper json) {
+			JsonMapper json, BusinessTime businessTime) {
 		this.requests = requests;
 		this.products = products;
 		this.images = images;
 		this.json = json;
+		this.businessTime = businessTime;
 	}
 
 	public record CreatedResponse(long id) {
@@ -148,7 +151,7 @@ public class ClientRequestController {
 			try {
 				if (!DATE_PATTERN.matcher(dateText).matches()) throw new DateTimeParseException("", dateText, 0);
 				preferredDate = LocalDate.parse(dateText);
-				if (preferredDate.isBefore(LocalDate.now())) {
+				if (preferredDate.isBefore(businessTime.today())) {
 					errors.put("preferredDate", "The installation date can't be in the past.");
 				}
 			}

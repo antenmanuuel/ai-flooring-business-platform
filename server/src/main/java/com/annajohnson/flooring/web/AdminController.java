@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.annajohnson.flooring.BusinessTime;
 import com.annajohnson.flooring.auth.AuthInterceptor;
 import com.annajohnson.flooring.client.AdminGreeting;
 import com.annajohnson.flooring.client.ClientDetails;
@@ -38,10 +39,12 @@ public class AdminController {
 
 	private final ClientRepository clients;
 	private final RequestRepository requests;
+	private final BusinessTime businessTime;
 
-	public AdminController(ClientRepository clients, RequestRepository requests) {
+	public AdminController(ClientRepository clients, RequestRepository requests, BusinessTime businessTime) {
 		this.clients = clients;
 		this.requests = requests;
+		this.businessTime = businessTime;
 	}
 
 	/**
@@ -62,13 +65,13 @@ public class AdminController {
 	}
 
 	/**
-	 * The greeting and first name both come from MySQL: the time of day from the database clock,
+	 * The greeting and first name both come from MySQL: the time of day from the database clock (in the business's time zone),
 	 * the name from the admin's row in Client. Also lists sign-ups waiting for approval and quote
 	 * requests waiting for a first quote.
 	 */
 	@GetMapping("/overview")
 	public OverviewResponse overview(@RequestAttribute(AuthInterceptor.CURRENT_CLIENT) ClientRow admin) {
-		AdminGreeting greeting = clients.greetingFor(admin.id());
+		AdminGreeting greeting = clients.greetingFor(admin.id(), businessTime.utcOffset());
 		List<NewRequestNotice> newRequests = requests.findPending();
 		return new OverviewResponse(greeting.greeting(), greeting.firstName(), new Stats(newRequests.size(), 0, 0, 0),
 				clients.findPendingSignups(), newRequests);

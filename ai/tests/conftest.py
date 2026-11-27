@@ -27,6 +27,7 @@ def settings(tmp_path):
         chroma_dir=tmp_path / "chroma",
         chroma_collection=f"test_{uuid.uuid4().hex[:8]}",  # a fresh collection per test
         rate_limit_per_minute=3,
+        catalog_refresh_minutes=0,  # no background refresh calling a real server
     )
 
 

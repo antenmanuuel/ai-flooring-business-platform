@@ -48,5 +48,24 @@ def rebuild(store: Chroma, documents: list[Document]) -> int:
     return len(documents)
 
 
+def replace_catalog(store: Chroma, documents: list[Document]) -> bool:
+    """Swaps the catalog documents in the index for these (the guides stay). Does nothing when the catalog
+    hasn't changed, so it's cheap to call often. Returns True if the index changed."""
+    current = store.get(include=["documents", "metadatas"])
+    old = {
+        doc_id: text
+        for doc_id, text, meta in zip(current["ids"], current["documents"], current["metadatas"])
+        if str((meta or {}).get("source", "")).startswith("catalog:")
+    }
+    new = {d.metadata["source"]: d for d in documents}
+    if sorted(old.values()) == sorted(d.page_content for d in new.values()):
+        return False
+    if old:
+        store.delete(ids=list(old))
+    if new:
+        store.add_documents(list(new.values()), ids=list(new))
+    return True
+
+
 def count(store: Chroma) -> int:
     return len(store.get(include=[])["ids"])

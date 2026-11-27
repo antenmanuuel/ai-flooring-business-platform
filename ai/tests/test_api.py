@@ -1,8 +1,11 @@
 import json
+import time
 
+from fastapi import Request
 from fastapi.testclient import TestClient
 
-from app.main import create_app
+from app.main import RateLimiter, client_key, create_app
+from app.rag import Assistant
 
 
 def parse_sse(text: str) -> list[tuple[str, object]]:
@@ -56,3 +59,33 @@ def test_without_an_api_key_the_chat_says_it_isnt_set_up(settings, store):
         assert client.get("/api/assistant/health").json()["llmConfigured"] is False
         response = client.post("/api/assistant/chat", json={"message": "Hi"})
         assert response.status_code == 503 and response.json()["detail"] == "The assistant isn't set up yet."
+
+
+def test_site_wide_daily_limit_covers_every_visitor(settings, store, fake_llm):
+    app = create_app(settings.model_copy(update={"site_daily_question_limit": 2}))
+    app.state.store = store
+    app.state.assistant = Assistant(store, fake_llm)
+    with TestClient(app) as client:
+        for ip in ("203.0.113.1", "203.0.113.2"):
+            assert client.post("/api/assistant/chat", json={"message": "Hi"}, headers={"X-Forwarded-For": ip}).status_code == 200
+        refused = client.post("/api/assistant/chat", json={"message": "Hi"}, headers={"X-Forwarded-For": "203.0.113.3"})
+        assert refused.status_code == 429 and "all the questions it can for today" in refused.json()["detail"]
+
+
+def test_visitor_ip_is_taken_from_the_trusted_proxies():
+    def request(forwarded: str | None):
+        headers = [(b"x-forwarded-for", forwarded.encode())] if forwarded else []
+        return Request({"type": "http", "headers": headers, "client": ("10.0.0.5", 1234)})
+
+    # nginx (1 hop) added the visitor's address last; "6.6.6.6" was made up by the visitor.
+    assert client_key(request("6.6.6.6, 198.51.100.7")) == "198.51.100.7"
+    # A load balancer in front of nginx (2 hops): the visitor is second from the end.
+    assert client_key(request("6.6.6.6, 198.51.100.7, 10.0.1.9"), trusted_proxy_hops=2) == "198.51.100.7"
+    assert client_key(request(None)) == "10.0.0.5"
+
+
+def test_rate_limiter_forgets_quiet_visitors():
+    limiter = RateLimiter(per_minute=5, per_day=5)
+    limiter.check("203.0.113.1")
+    limiter.sweep(time.monotonic() + 86_401)
+    assert limiter.hits == {}

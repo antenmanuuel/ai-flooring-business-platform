@@ -99,3 +99,18 @@ def test_client_chat_refuses_the_admin(chat_client):
     chat_client.cookies.set("token", "admin-token")
     response = chat_client.post("/api/assistant/client/chat", json={"message": "Show me my requests"})
     assert response.status_code == 403 and response.json()["detail"] == "Clients only."
+
+
+def test_client_chat_explains_when_the_server_is_down(settings, store, fake_llm):
+    def down(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    app = create_app(settings)
+    app.state.store = store
+    app.state.assistant = Assistant(store, fake_llm)
+    app.state.client_assistant = ClientAssistant(store, fake_llm)
+    app.state.client_source = ClientDataSource("http://spring/api/client", transport=httpx.MockTransport(down))
+    with TestClient(app) as client:
+        client.cookies.set("token", JOHN)
+        response = client.post("/api/assistant/client/chat", json={"message": "Status?"})
+    assert response.status_code == 503 and "can't reach the website" in response.json()["detail"]

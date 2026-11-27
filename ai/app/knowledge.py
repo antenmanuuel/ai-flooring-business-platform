@@ -52,16 +52,22 @@ def product_to_document(product: dict) -> Document:
     )
 
 
-def load_catalog(catalog_url: str) -> list[Document]:
-    """The current catalog from GET /api/products. Returns [] (and logs why) if the server can't be reached."""
+def fetch_catalog(catalog_url: str) -> list[Document] | None:
+    """The current catalog from GET /api/products, or None (and logs why) if the server can't be reached
+    or answers with something unexpected. An empty list means the catalog really is empty."""
     try:
         response = httpx.get(catalog_url, timeout=10)
         response.raise_for_status()
     except httpx.HTTPError as err:
-        log.warning("Could not load the catalog from %s (%s); indexing guides only.", catalog_url, err)
-        return []
+        log.warning("Could not load the catalog from %s (%s).", catalog_url, err)
+        return None
     try:
         return [product_to_document(p) for p in response.json()]
     except (KeyError, TypeError, ValueError) as err:
-        log.warning("The catalog from %s isn't in the expected format (%r); indexing guides only.", catalog_url, err)
-        return []
+        log.warning("The catalog from %s isn't in the expected format (%r).", catalog_url, err)
+        return None
+
+
+def load_catalog(catalog_url: str) -> list[Document]:
+    """The current catalog, or [] if it can't be loaded (the index is then built from the guides only)."""
+    return fetch_catalog(catalog_url) or []

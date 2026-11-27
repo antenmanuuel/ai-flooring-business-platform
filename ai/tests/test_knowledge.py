@@ -1,5 +1,7 @@
 from app.config import AI_DIR
-from app.knowledge import load_catalog, load_guides, product_to_document
+from app.knowledge import fetch_catalog, load_catalog, load_guides, product_to_document
+from app.main import refresh_catalog
+from app.store import replace_catalog
 from conftest import CATALOG
 
 
@@ -33,3 +35,28 @@ def test_product_becomes_a_quotable_document():
 
 def test_unreachable_catalog_falls_back_to_guides_only():
     assert load_catalog("http://127.0.0.1:9/api/products") == []
+
+
+def test_catalog_changes_replace_only_the_catalog_in_the_index(store):
+    guides_before = [m for m in store.get(include=["metadatas"])["metadatas"] if m["source"].startswith("guide:")]
+    repriced = [{**CATALOG[0], "unitPrice": 8.25}]  # White Oak's price changed; Gray Plank was removed
+
+    assert replace_catalog(store, [product_to_document(p) for p in repriced]) is True
+    data = store.get(include=["documents", "metadatas"])
+    catalog = [d for d, m in zip(data["documents"], data["metadatas"]) if m["source"].startswith("catalog:")]
+    assert catalog == [product_to_document(repriced[0]).page_content] and "$8.25" in catalog[0]
+    assert len([m for m in data["metadatas"] if m["source"].startswith("guide:")]) == len(guides_before)
+
+    # Nothing changed since: nothing is re-embedded.
+    assert replace_catalog(store, [product_to_document(p) for p in repriced]) is False
+
+
+def test_refresh_keeps_the_catalog_when_the_server_is_down(store, monkeypatch):
+    monkeypatch.setattr("app.main.fetch_catalog", lambda url: None)
+    before = store.get(include=[])["ids"]
+    refresh_catalog(store, "http://127.0.0.1:9/api/products")
+    assert store.get(include=[])["ids"] == before
+
+
+def test_unreachable_catalog_is_none_not_empty():
+    assert fetch_catalog("http://127.0.0.1:9/api/products") is None
